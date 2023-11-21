@@ -1,0 +1,12 @@
+db:
+  driver:   postgres
+  host:     localhost
+  port:     5432
+  database: fern
+  username: fern
+  password: fern
+  detail-log:     true
+  max-open-conns: 100
+  max-idle-conns: 10
+server:
+  port: :8080
