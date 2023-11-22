@@ -7,17 +7,14 @@ import (
 )
 
 func RegisterRouters(router *gin.Engine) {
-	router.GET("/", handlers.Home)
-	router.GET("/testrun", handlers.TestRunView)
-	router.GET("/testrun/:id", handlers.TestRunView)
-
+	// router.GET("/", handlers.Home)
 	api := router.Group("/api")
 	{
-		person := api.Group("/person")
-		person.GET("/", handlers.GetTestRunAll)
-		person.GET("/:id", handlers.GetTestRunByID)
-		person.POST("/", handlers.CreateTestRun)
-		person.PUT("/:id", handlers.UpdateTestRun)
-		person.DELETE("/:id", handlers.DeleteTestRun)
+		testRun := api.Group("/testrun")
+		testRun.GET("/", handlers.GetTestRunAll)
+		testRun.GET("/:id", handlers.GetTestRunByID)
+		testRun.POST("/", handlers.CreateTestRun)
+		testRun.PUT("/:id", handlers.UpdateTestRun)
+		testRun.DELETE("/:id", handlers.DeleteTestRun)
 	}
 }

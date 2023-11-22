@@ -1,16 +1,17 @@
 package config
 
 import (
+	"os"
+
 	"github.com/go-yaml/yaml"
-	"io/ioutil"
 )
 
 type config struct {
-	Db     *dbCofnig
+	Db     *dbConfig
 	Server *serverConfig
 }
 
-type dbCofnig struct {
+type dbConfig struct {
 	Driver       string `yaml:"driver"`
 	Host         string `yaml:"host"`
 	Port         string `yaml:"port"`
@@ -29,7 +30,7 @@ type serverConfig struct {
 var configuration *config
 
 func LoadConfig(path string) error {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -40,7 +41,7 @@ func LoadConfig(path string) error {
 	return err
 }
 
-func GetDb() *dbCofnig {
+func GetDb() *dbConfig {
 	return configuration.Db
 }
 

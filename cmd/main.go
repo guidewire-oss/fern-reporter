@@ -1,12 +1,12 @@
 package main
 
 import (
+	"fern-reporter/config"
+	"fern-reporter/pkg/api/routers"
+	"fern-reporter/pkg/db"
 	"log"
 	"time"
 
-	"github.com/fralonra/gin-gorm-pg-example/config"
-	"github.com/fralonra/gin-gorm-pg-example/db"
-	"github.com/fralonra/gin-gorm-pg-example/routers"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -18,7 +18,7 @@ func main() {
 }
 
 func initConfig() {
-	if err := config.LoadConfig("config/config.yml"); err != nil {
+	if err := config.LoadConfig("config/config.yaml"); err != nil {
 		log.Fatalf("error: %v", err)
 	}
 }

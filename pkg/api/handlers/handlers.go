@@ -58,7 +58,7 @@ func DeleteTestRun(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	} else {
-		testRun.Id = testRunID
+		testRun.Id = uint64(testRunID)
 	}
 
 	db.GetDb().Delete(&testRun)
