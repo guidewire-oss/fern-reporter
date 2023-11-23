@@ -37,7 +37,7 @@ func initServer() {
 		AllowAllOrigins:  true,
 		MaxAge:           12 * time.Hour,
 	}))
-	router.LoadHTMLGlob("views/*")
+	router.LoadHTMLGlob("pkg/views/*")
 	routers.RegisterRouters(router)
 	router.Run(serverConfig.Port)
 }
