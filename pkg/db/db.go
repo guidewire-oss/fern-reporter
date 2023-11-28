@@ -15,7 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var db *gorm.DB
+var gdb *gorm.DB
 
 //go:embed migrations
 var migrations embed.FS
@@ -60,22 +60,24 @@ func Init() {
 	// 	dbConfig.Database,
 	// )
 
-	db, err = gorm.Open(postgres.Open("postgres://fern:fern@localhost:5432/fern?sslmode=disable"), &gorm.Config{})
+	gdb, err = gorm.Open(postgres.Open("postgres://fern:fern@localhost:5432/fern?sslmode=disable"), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
+
+	gdb = gdb.Debug()
 
 	// db.LogMode(dbConfig.DetailLog)
 	// db.DB().SetMaxOpenConns(dbConfig.MaxOpenConns)
 	// db.DB().SetMaxIdleConns(dbConfig.MaxIdleConns)
 	// db.AutoMigrate(&models.TestRun{})
-	// defer db.Close()
+	// defer gdb.Close()
+
 }
 
 func GetDb() *gorm.DB {
-	return db
+	return gdb
 }
 
-// func CloseDb() {
-// 	db.Close()
-// }
+func CloseDb() {
+}

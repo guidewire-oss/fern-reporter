@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS test_run;
+DROP TABLE IF EXISTS test_runs;

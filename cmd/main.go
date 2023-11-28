@@ -29,6 +29,7 @@ func initDb() {
 
 func initServer() {
 	serverConfig := config.GetServer()
+	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
 		AllowMethods:     []string{"GET", "POST"},

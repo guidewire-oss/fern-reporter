@@ -5,25 +5,28 @@ import (
 )
 
 type TimeLog struct {
-	StartTime time.Time     `json:"start_time"`
-	EndTime   time.Time     `json:"end_time"`
-	Duration  time.Duration `json:"duration"`
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
 }
 
 type TestRun struct {
-	Id        uint64     `json:"id"`
-	SuiteRuns []SuiteRun `json:"suite_runs"`
+	ID        uint64     `json:"id" gorm:"primaryKey"`
+	SuiteRuns []SuiteRun `json:"suite_runs" gorm:"foreignKey:test_run_id;references:TestRunID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	TimeLog
 }
 
 type SuiteRun struct {
-	SpecRuns []SpecRun `json:"spec_run"`
+	ID        uint64    `json:"id" gorm:"primaryKey"`
+	TestRunID uint64    `json:"test_run_id"`
+	SpecRuns  []SpecRun `json:"spec_runs" gorm:"foreignKey:suite_id;references:SuiteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	TimeLog
 }
 
 type SpecRun struct {
+	ID              uint64 `json:"id" gorm:"primaryKey"`
+	SuiteID         uint64 `json:"suite_id"`
 	SpecDescription string `json:"spec_description"`
 	Status          string `json:"status"`
-	Message         string `json:message`
+	Message         string `json:"message"`
 	TimeLog
 }

@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS spec_run;
+DROP TABLE IF EXISTS spec_runs;
