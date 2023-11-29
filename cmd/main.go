@@ -4,7 +4,9 @@ import (
 	"fern-reporter/config"
 	"fern-reporter/pkg/api/routers"
 	"fern-reporter/pkg/db"
+	"html/template"
 	"log"
+
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -38,7 +40,19 @@ func initServer() {
 		AllowAllOrigins:  true,
 		MaxAge:           12 * time.Hour,
 	}))
-	router.LoadHTMLGlob("pkg/views/*")
+
+	funcMap := template.FuncMap{
+		"CalculateDuration": CalculateDuration,
+	}
+	templ := template.Must(template.New("").Funcs(funcMap).ParseGlob("pkg/views/*"))
+	router.SetHTMLTemplate(templ)
+
+	// router.LoadHTMLGlob("pkg/views/*")
 	routers.RegisterRouters(router)
 	router.Run(serverConfig.Port)
+}
+
+func CalculateDuration(start, end time.Time) string {
+	duration := end.Sub(start)
+	return duration.String() // or format as needed
 }

@@ -1,181 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ATMOS Acceptance Tests</title>
-    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
+      body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+      }
 
-        .container {
-            margin-top: 20px;
-        }
+      .container {
+        margin-top: 20px;
+      }
 
-        .test-row {
-            cursor: pointer;
-            transition: background-color 0.3s, color 0.3s;
-        }
+      .test-row {
+        cursor: pointer;
+        transition: background-color 0.3s, color 0.3s;
+      }
 
-        .test-row:hover {
-            background-color: #f0f0f0;
-        }
+      .test-row:hover {
+        background-color: #f0f0f0;
+      }
 
-        .status-passed {
-            color: #2ecc71;
-            font-weight: bold;
-        }
+      .status-passed {
+        color: #2ecc71;
+        font-weight: bold;
+      }
 
-        .status-failed {
-            color: #e74c3c;
-            font-weight: bold;
-        }
+      .status-failed {
+        color: #e74c3c;
+        font-weight: bold;
+      }
 
-        .expand-icon {
-            color: #3498db;
-            font-size: 1.2em;
-            margin-left: 5px;
-        }
+      .expand-icon {
+        color: #3498db;
+        font-size: 1.2em;
+        margin-left: 5px;
+      }
 
-        .expand-section {
-            background-color: #2ecc71;
-            padding: 10px;
-            color: #ffffff;
-        }
+      .expand-section {
+        background-color: #2ecc71;
+        padding: 10px;
+        color: #ffffff;
+      }
 
-        .failed-section {
-            background-color: #e74c3c;
-            padding: 10px;
-            color: #ffffff;
-        }
+      .failed-section {
+        background-color: #e74c3c;
+        padding: 10px;
+        color: #ffffff;
+      }
 
-        .test-name {
-            max-width: 400px;
-             
-            word-wrap: break-word;
-        }
+      .test-name {
+        max-width: 400px;
+        word-wrap: break-word;
+      }
 
-        .table td {
-            word-wrap: break-word;
-        }
+      .table td {
+        word-wrap: break-word;
+      }
     </style>
-</head>
-
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h1 class="title is-3 has-text-centered has-background-primary has-text-white p-4">ATMOS Acceptance Tests</h1>
-        
-        <div>
-            <table style="width: 100%;">
-                <tr>
-                    <td><button onclick="filterTests('passed')" class="button is-success">Show PassedTests</button> </td>
-                    <td><button onclick="filterTests('failed')" class="button is-danger">Show Failed Tests</button></td>
-                    <td><button onclick="filterTests('all')" class="button">Show All Tests</button></td>
-                    <td style="align-items: center;width: 15%; vertical-align: middle;"><span style="font-weight: bold;">Total Tests: 1</span></td>
-                    <td style="align-items: center;width: 15%; vertical-align: middle;"><span style="font-weight: bold;">Executed Tests: 1</span></td>
-                    <td style="align-items: center;width: 15%; vertical-align: middle;"><span class="status-failed">Failed</span>/<span class="status-passed">Passed</span>: <span class="status-failed">1</span>/<span class="status-passed">0</span></td>
-                </tr>
-            </table>
-        </div>
-        <table class="table is-fullwidth">
-            <thead>
-                <tr>
-                    <th>Serial Number</th>
-                    <th>Test Name</th>
-                    <th>Test Status</th>
-                    <th>Test Duration</th>
-                    <th>Tags</th>
-                </tr>
-            </thead>
-            <tbody>
-                
-                
-                    
-                <tr class="test-row" style="background-color: red; font-weight: bold; font-display: color: white;">
-                    
-                    
-                    <td class="test-serial-number">2</td>
-                    <td class="test-name">The GWCP labels trait should have applied labels to Deployment</td>
-                    <td class="test-status">failed</td>
-                    <td>5.012595375 seconds</td>
-                    <td>
-                        
-                        <span class="tag is-primary">core</span>
-                        
-                        <span class="tag is-primary">kubevela</span>
-                        
-                        <span class="tag is-primary">app</span>
-                        
-                        <span class="tag is-primary">traits</span>
-                        
-                    </td>
-                    <i class="expand-icon fas fa-plus"></i>
-                </tr>
-                <tr class="details" style="display: none;">
-                    <td></td>
-                    <td colspan="4">
-                        
-                        <div class="failed-section">
-                            No future change is possible.  Bailing out early after 5.001s.
-Expected
-    &lt;int&gt;: 1
-to match exit code:
-    &lt;int&gt;: 0
-                        </div>
-                        
-    </div>
-    </td>
-    </tr>
-    
+      <h1 class="title is-3 has-text-centered has-background-primary has-text-white p-4">ATMOS Acceptance Tests</h1>
+      <div>
+        <table style="width: 100%;">
+          <tr>
+            <td>
+              <button onclick="filterTests('passed')" class="button is-success">Show PassedTests</button>
+            </td>
+            <td>
+              <button onclick="filterTests('failed')" class="button is-danger">Show Failed Tests</button>
+            </td>
+            <td>
+              <button onclick="filterTests('all')" class="button">Show All Tests</button>
+            </td>
+            <td style="align-items: center;width: 15%; vertical-align: middle;">
+              <span style="font-weight: bold;">Total Tests: 1</span>
+            </td>
+            <td style="align-items: center;width: 15%; vertical-align: middle;">
+              <span style="font-weight: bold;">Executed Tests: 1</span>
+            </td>
+            <td style="align-items: center;width: 15%; vertical-align: middle;">
+              <span class="status-failed">Failed</span>/ <span class="status-passed">Passed</span>: <span class="status-failed">1</span>/ <span class="status-passed">0</span>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <table class="table is-fullwidth">
+        <thead>
+          <tr>
+            <th>Serial Number</th>
+            <th>Test Name</th>
+            <th>Test Status</th>
+            <th>Test Duration</th>
+            <th>Tags</th>
+          </tr>
+        </thead>
+        <tbody>
+
+        {{range .testRuns}}
+          {{range .SuiteRuns}}
+            {{range .SpecRuns}}
+            <tr class="test-row" style="background-color: {{if eq .Status "passed"}}green{{else}}red{{end}}; font-weight: bold; font-display: color: white;">
+            <td class="test-serial-number">{{ .SuiteID }}</td>
+            <td class="test-name">{{ .SpecDescription }}</td>
+            <td class="test-status">{{ .Status}}</td>
+            <td>{{ CalculateDuration .StartTime .EndTime }}</td>
+            <td>
+              <span class="tag is-primary">core</span>
+              <span class="tag is-primary">kubevela</span>
+              <span class="tag is-primary">app</span>
+              <span class="tag is-primary">traits</span>
+            </td>
+            <i class="expand-icon fas fa-plus"></i>
+          </tr>
+          <tr class="details" style="display: none;">
+            <td></td>
+            <td colspan="4">
+              <div class="failed-section">{{ .Message}}</div>
+            </td>
+          </tr>
+            {{end}}
+          {{end}}
+        {{end}}
     </tbody>
     </table>
     </div>
-
     <script>
-        function filterTests(status) {
-            const testRows = document.querySelectorAll('.test-row');
-            testRows.forEach((row) => {
-                const testStatus = row.querySelector('.test-status').textContent.toLowerCase();
-                const detailsRow = row.nextElementSibling;
-                if (status === 'all' || testStatus === status) {
-                    row.style.display = 'table-row';
-                } else {
-                    row.style.display = 'none';
-                    detailsRow.style.display = 'none';
-                }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const testRows = document.querySelectorAll('.test-row');
-            testRows.forEach((row) => {
-                const detailsRow = row.nextElementSibling;
-                const testStatus = row.querySelector('.test-status').textContent.toLowerCase();
-                if (testStatus === 'failed') {
-                    row.classList.add('failed-row');
-                }
-                row.addEventListener('click', () => {
-                    if (detailsRow.style.display === 'table-row') {
-                        detailsRow.style.display = 'none';
-                        row.querySelector('.expand-icon').classList.remove('fa-minus');
-                        row.querySelector('.expand-icon').classList.add('fa-plus');
-                    } else {
-                        detailsRow.style.display = 'table-row';
-                        row.querySelector('.expand-icon').classList.remove('fa-plus');
-                        row.querySelector('.expand-icon').classList.add('fa-minus');
-                    }
-                });
-            });
+      function filterTests(status) {
+        const testRows = document.querySelectorAll('.test-row');
+        testRows.forEach((row) => {
+          const testStatus = row.querySelector('.test-status').textContent.toLowerCase();
+          const detailsRow = row.nextElementSibling;
+          if (status === 'all' || testStatus === status) {
+            row.style.display = 'table-row';
+          } else {
+            row.style.display = 'none';
+            detailsRow.style.display = 'none';
+          }
         });
+      }
+      document.addEventListener('DOMContentLoaded', function() {
+        const testRows = document.querySelectorAll('.test-row');
+        testRows.forEach((row) => {
+          const detailsRow = row.nextElementSibling;
+          const testStatus = row.querySelector('.test-status').textContent.toLowerCase();
+          if (testStatus === 'failed') {
+            row.classList.add('failed-row');
+          }
+          row.addEventListener('click', () => {
+            if (detailsRow.style.display === 'table-row') {
+              detailsRow.style.display = 'none';
+              row.querySelector('.expand-icon').classList.remove('fa-minus');
+              row.querySelector('.expand-icon').classList.add('fa-plus');
+            } else {
+              detailsRow.style.display = 'table-row';
+              row.querySelector('.expand-icon').classList.remove('fa-plus');
+              row.querySelector('.expand-icon').classList.add('fa-minus');
+            }
+          });
+        });
+      });
     </script>
-</body>
-
+  </body>
 </html>
-

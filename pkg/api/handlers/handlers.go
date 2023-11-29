@@ -18,17 +18,17 @@ func CreateTestRun(c *gin.Context) {
 		return // Stop further processing if there is a binding error
 	}
 
-	db := db.GetDb()
+	gdb := db.GetDb()
 	if testRun.ID != 0 {
 		// Check if a record with the given ID already exists
-		if err := db.Where("id = ?", testRun.ID).First(&testRun).Error; err != nil {
+		if err := gdb.Where("id = ?", testRun.ID).First(&testRun).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "record not found"})
 			return // Stop further processing if record not found
 		}
 	}
 
 	// Save the testRun record to the database
-	if err := db.Save(&testRun).Error; err != nil {
+	if err := gdb.Save(&testRun).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error saving record"})
 		return // Stop further processing if save fails
 	}
@@ -85,4 +85,21 @@ func DeleteTestRun(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, &testRun)
+}
+
+func ReportTestRunAll(c *gin.Context) {
+	var testRuns []models.TestRun
+	db.GetDb().Preload("SuiteRuns.SpecRuns").Find(&testRuns)
+	c.HTML(http.StatusOK, "test_runs.html", gin.H{
+		"testRuns": testRuns,
+	})
+}
+
+func ReportTestRunById(c *gin.Context) {
+	var testRun models.TestRun
+	id := c.Param("id")
+	db.GetDb().Preload("SuiteRuns.SpecRuns").Where("id = ?", id).First(&testRun)
+	c.HTML(http.StatusOK, "test_runs.html", gin.H{
+		"testRuns": []models.TestRun{testRun},
+	})
 }

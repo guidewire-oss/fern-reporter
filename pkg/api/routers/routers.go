@@ -17,4 +17,9 @@ func RegisterRouters(router *gin.Engine) {
 		testRun.PUT("/:id", handlers.UpdateTestRun)
 		testRun.DELETE("/:id", handlers.DeleteTestRun)
 	}
+	reports := router.Group("/reports/testruns")
+	{
+		testRunReport := reports.GET("/", handlers.ReportTestRunAll)
+		testRunReport.GET("/:id", handlers.ReportTestRunById)
+	}
 }

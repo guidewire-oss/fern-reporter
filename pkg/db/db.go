@@ -34,15 +34,7 @@ func Init() {
 	} else if err != nil {
 		log.Fatalln(err)
 	}
-	// pkger.Include("/pkg/db/migrations")
-	// m, err := migrate.New(
-	// 	"pkger://pkg/db/migrations",
-	// 	"postgres://fern:fern@localhost:5432/fern?sslmode=disable")
-	//
-	// // Run migrations from packed files
-	// if err = m.Up(); err != nil {
-	// 	log.Fatal(err)
-	// }
+
 	// dbConfig := config.GetDb()
 	// dbConfig := config.dbConfig{
 	// 	Username: "fern",
@@ -66,6 +58,9 @@ func Init() {
 	}
 
 	gdb = gdb.Debug()
+	// gdb.AutoMigrate(&models.TestRun{})
+	// gdb.AutoMigrate(&models.SuiteRun{})
+	// gdb.AutoMigrate(&models.SpecRun{})
 
 	// db.LogMode(dbConfig.DetailLog)
 	// db.DB().SetMaxOpenConns(dbConfig.MaxOpenConns)
