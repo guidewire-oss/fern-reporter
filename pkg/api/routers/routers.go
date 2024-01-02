@@ -1,7 +1,7 @@
 package routers
 
 import (
-	"fern-reporter/pkg/api/handlers"
+	"github.com/guidewire/fern-reporter/pkg/api/handlers"
 
 	"github.com/gin-gonic/gin"
 )

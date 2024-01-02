@@ -94,35 +94,39 @@
       <table class="table is-fullwidth">
         <thead>
           <tr>
-            <th>Serial Number</th>
-            <th>Test Name</th>
-            <th>Test Status</th>
-            <th>Test Duration</th>
+            <th>Test Run ID</th>
+            <th>Test Project Name</th>
+            <th>Spec Description</th>
+            <th>Spec Status</th>
+            <th>Spec Duration</th>
             <th>Tags</th>
           </tr>
         </thead>
         <tbody>
-
-        {{range .testRuns}}
-          {{range .SuiteRuns}}
-            {{range .SpecRuns}}
+        {{ $testRuns := .testRuns }}
+        {{range $testRun := $testRuns}}
+          {{ $suiteRuns := $testRun.SuiteRuns }}
+          {{range $suiteRun := $suiteRuns}}
+            {{ $specRuns := $suiteRun.SpecRuns }}
+            {{range $specRun := $specRuns}}
             <tr class="test-row" style="background-color: {{if eq .Status "passed"}}green{{else}}red{{end}}; font-weight: bold; font-display: color: white;">
-            <td class="test-serial-number">{{ .SuiteID }}</td>
-            <td class="test-name">{{ .SpecDescription }}</td>
-            <td class="test-status">{{ .Status}}</td>
-            <td>{{ CalculateDuration .StartTime .EndTime }}</td>
+            <td class="test-serial-number">{{ $suiteRun.TestRunID }}</td>
+            <td class="test-project-name">{{ $testRun.TestProjectName }}</td>
+            <td class="test-name">{{ $specRun.SpecDescription }}</td>
+            <td class="test-status">{{ $specRun.Status}}</td>
+            <td>{{ CalculateDuration $specRun.StartTime $specRun.EndTime }}</td>
             <td>
-              <span class="tag is-primary">core</span>
-              <span class="tag is-primary">kubevela</span>
-              <span class="tag is-primary">app</span>
-              <span class="tag is-primary">traits</span>
+              {{ $tags := $specRun.Tags }}
+              {{ range $tag := $tags}}
+              <span class="tag is-primary">{{ $tag.Name}}</span>
+              {{ end}}
             </td>
             <i class="expand-icon fas fa-plus"></i>
           </tr>
           <tr class="details" style="display: none;">
             <td></td>
             <td colspan="4">
-              <div class="failed-section">{{ .Message}}</div>
+              <div class="failed-section">{{ $specRun.Message}}</div>
             </td>
           </tr>
             {{end}}
