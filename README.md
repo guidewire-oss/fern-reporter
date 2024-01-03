@@ -26,6 +26,10 @@ Fern is a Golang Gin-based API that connects to a PostgreSQL database. It is des
 
 - Golang environment.
 - Docker for running the PostgreSQL database.
+- Install gox for building the binary
+   ```bash
+   go install github.com/mitchellh/gox@latest
+   ```
 
 #### Deployment
 
