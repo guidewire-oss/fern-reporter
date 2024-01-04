@@ -1,17 +1,23 @@
 package main
 
 import (
-	"fern-reporter/config"
-	"fern-reporter/pkg/api/routers"
-	"fern-reporter/pkg/db"
 	"html/template"
 	"log"
 
+	"github.com/guidewire/fern-reporter/config"
+	"github.com/guidewire/fern-reporter/pkg/api/routers"
+	"github.com/guidewire/fern-reporter/pkg/db"
+
 	"time"
+
+	"embed"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
+
+//go:embed pkg/views/test_runs.html
+var testRunsTemplate embed.FS
 
 func main() {
 	initConfig()
@@ -44,7 +50,10 @@ func initServer() {
 	funcMap := template.FuncMap{
 		"CalculateDuration": CalculateDuration,
 	}
-	templ := template.Must(template.New("").Funcs(funcMap).ParseGlob("pkg/views/*"))
+	templ, err := template.New("").Funcs(funcMap).ParseFS(testRunsTemplate, "pkg/views/test_runs.html")
+	if err != nil {
+		log.Fatalf("error parsing templates: %v", err)
+	}
 	router.SetHTMLTemplate(templ)
 
 	// router.LoadHTMLGlob("pkg/views/*")
