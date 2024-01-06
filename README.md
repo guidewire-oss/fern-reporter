@@ -35,17 +35,18 @@ Fern is a Golang Gin-based API that connects to a PostgreSQL database. It is des
 
 1. **Clone the Fern Repository**: Clone the repository to your local machine.
    ```bash
-   git clone [Fern Repository URL]
+   git clone git@github.com:Guidewire/fern-reporter.git
    ```
 2. **Start the API Server**: Navigate to the project directory and start the server.
    ```bash
-   cd [Fern Directory]
+   cd fern-reporter
    make docker-run
    ```
 
 ### Integrating the Client into Ginkgo Test Suites
 
-1. ***Add the Fern dependency to your test project
+1. **Add the Fern dependency to your test project**:
+
    ```bash
    go get -u github.com/guidewire/fern-reporter
    ```
@@ -53,7 +54,7 @@ Fern is a Golang Gin-based API that connects to a PostgreSQL database. It is des
    
    Import the fern client package
    ```go
-      import fern "github.com/guidewire/fern-reporter/pkg/client"
+   import fern "github.com/guidewire/fern-reporter/pkg/client"
    ```
 
    ```go
