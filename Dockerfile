@@ -1,37 +1,39 @@
 # Build stage
-FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:1.21 as builder
+FROM --platform=${BUILDPLATFORM} golang:1.21-alpine AS build-env
 
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
+# Set up arguments for multi-architecture support
 ARG TARGETOS
 ARG TARGETARCH
 
-ENV GO111MODULE=on
+# Set up the environment
+ENV GO111MODULE=on \
+    CGO_ENABLED=0
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the source from the current directory to the working Directory inside the container
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+RUN go mod tidy && go mod download
+
+# Copy the source from the current directory to the Working Directory inside the container
 COPY . .
-RUN go mod download
+COPY config/config.yaml ./
+RUN mkdir ./migrations
+COPY pkg/db/migrations ./migrations/
 
 # Build the Go app
-# RUN go mod tidy && go build -o fern .
-
 RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o fern .
 
-# Final stage: Run stage
-FROM --platform=${BUILDPLATFORM:-linux/amd64} gcr.io/distroless/static:nonroot
-
-
-# Set the working directory in the container
+# Final stage
+FROM --platform=${TARGETPLATFORM} alpine
 WORKDIR /app
 
-# Copy the pre-built binary file from the previous stage
-COPY --from=builder /app/fern /app/fern
+# Copy the binary from the build-env
+COPY --from=build-env /app/fern /app/
+COPY --from=build-env /app/config.yaml /app/
+RUN mkdir /app/migrations
+COPY --from=build-env /app/migrations/* /app/migrations/
 
-USER nonroot:nonroot
-
-# Command to run the binary
-CMD ["/app/fern"]
-
+# Command to run
+ENTRYPOINT ["/app/fern"]
