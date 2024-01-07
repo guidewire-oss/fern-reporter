@@ -10,6 +10,7 @@ on:
       - 'main'
       - 'dev'
       - 'v*.*.*'
+      - 'wip-github-actions'
     tags:
       - 'v*.*.*'
   pull_request:
@@ -17,6 +18,7 @@ on:
       - 'main'
       - 'dev'
       - 'v*.*.*'
+      - 'wip-github-actions'
 
 permissions: 
   contents: read
@@ -26,15 +28,15 @@ permissions:
 jobs:
   build-fern-reporter:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
     steps:
-      # Get the repositery's code
       - name: Checkout
         uses: actions/checkout@v4
-      
-      # https://github.com/docker/setup-qemu-action
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      # https://github.com/docker/setup-buildx-action
+
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
@@ -47,8 +49,7 @@ jobs:
           username: ${{ secrets.FERN_DOCKER_USER }}
           password: ${{ secrets.FERN_DOCKER_SECRET }}
 
-      -
-        name: Docker meta
+      - name: Docker meta
         id: meta_fern_reporter
         uses: docker/metadata-action@v5
         with:
@@ -65,7 +66,7 @@ jobs:
             type=semver,pattern={{major}}
             type=sha
       - name: Build and push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
