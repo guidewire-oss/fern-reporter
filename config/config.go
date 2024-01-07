@@ -38,6 +38,22 @@ func LoadConfig(path string) error {
 	if err != nil {
 		return err
 	}
+
+	if os.Getenv("FERN_USERNAME") != "" {
+		configuration.Db.Username = os.Getenv("FERN_USERNAME")
+	}
+	if os.Getenv("FERN_PASSWORD") != "" {
+		configuration.Db.Password = os.Getenv("FERN_PASSWORD")
+	}
+	if os.Getenv("FERN_HOST") != "" {
+		configuration.Db.Host = os.Getenv("FERN_HOST")
+	}
+	if os.Getenv("FERN_PORT") != "" {
+		configuration.Db.Port = os.Getenv("FERN_PORT")
+	}
+	if os.Getenv("FERN_DATABASE") != "" {
+		configuration.Db.Database = os.Getenv("FERN_DATABASE")
+	}
 	return err
 }
 

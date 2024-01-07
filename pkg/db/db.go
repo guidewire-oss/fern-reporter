@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/golang-migrate/migrate/v4"
 	p "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/golang-migrate/migrate/v4/source/pkger"
+	"github.com/guidewire/fern-reporter/config"
 	"github.com/markbates/pkger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -22,7 +24,15 @@ var migrations embed.FS
 
 func Init() {
 	pkger.Include("/pkg/db")
-	pdb, _ := sql.Open("postgres", "postgres://fern:fern@localhost:5432/fern?sslmode=disable")
+	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		config.GetDb().Username,
+		config.GetDb().Password,
+		config.GetDb().Host,
+		config.GetDb().Port,
+		config.GetDb().Database,
+	)
+
+	pdb, _ := sql.Open("postgres", dbUrl)
 	driver, _ := p.WithInstance(pdb, &p.Config{})
 	source, _ := iofs.New(migrations, "migrations")
 	m, err := migrate.NewWithInstance("iofs", source, "postgres", driver)
@@ -35,39 +45,12 @@ func Init() {
 		log.Fatalln(err)
 	}
 
-	// dbConfig := config.GetDb()
-	// dbConfig := config.dbConfig{
-	// 	Username: "fern",
-	// 	Password: "fern",
-	// 	Host:     "localhost",
-	// 	Port:     "5432",
-	// 	Database: "fern",
-	// 	Driver:   "postgres",
-	// }
-	// dbinfo := fmt.Sprintf("user=%s password=%s host=%s port=%s dbname=%s sslmode=disable",
-	// 	dbConfig.Username,
-	// 	dbConfig.Password,
-	// 	dbConfig.Host,
-	// 	dbConfig.Port,
-	// 	dbConfig.Database,
-	// )
-
-	gdb, err = gorm.Open(postgres.Open("postgres://fern:fern@localhost:5432/fern?sslmode=disable"), &gorm.Config{})
+	gdb, err = gorm.Open(postgres.Open(dbUrl), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
 
 	gdb = gdb.Debug()
-	// gdb.AutoMigrate(&models.TestRun{})
-	// gdb.AutoMigrate(&models.SuiteRun{})
-	// gdb.AutoMigrate(&models.SpecRun{})
-
-	// db.LogMode(dbConfig.DetailLog)
-	// db.DB().SetMaxOpenConns(dbConfig.MaxOpenConns)
-	// db.DB().SetMaxIdleConns(dbConfig.MaxIdleConns)
-	// db.AutoMigrate(&models.TestRun{})
-	// defer gdb.Close()
-
 }
 
 func GetDb() *gorm.DB {

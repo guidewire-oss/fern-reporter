@@ -36,12 +36,15 @@ test:
 	@echo "Testing..."
 	@go test ./...
 
-docker-build: cross-compile
-	@echo "Building Docker image..."
-	@docker build -t fern-app .
+docker-build-local: cross-compile
+	@echo "Building Local Docker image..."
+	@docker build -t fern-app . -f Dockerfile-local
 
-docker-run: docker-build
+docker-run-local: docker-build
 	@echo "Running application in Docker..."
-	@docker run -p 8080:8080 fern-app
+	@docker run -it -p 8080:8080 fern-app
 
+docker-build-multi-arch:
+	@echo "Building multi arch docker image and pushing..."
+	@docker buildx build --platform linux/amd64,linux/arm64,linux/arm64/v8 -t anoop2811/fern-reporter:latest --push .
 

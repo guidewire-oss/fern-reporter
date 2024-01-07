@@ -1,36 +1,30 @@
-FROM ubuntu:20.04
+# Build stage
+FROM golang:1.21-alpine AS build-env
 
-# Avoid prompts from apt-get
-ENV DEBIAN_FRONTEND=noninteractive
+# Set up necessary Go environment variables (optional, based on your app's needs)
+# ENV GO111MODULE=on \
+#     CGO_ENABLED=0 \
+#     GOOS=linux \
+#     GOARCH=amd64
 
-# Install PostgreSQL and other dependencies
-RUN apt-get update && apt-get install -y postgresql postgresql-contrib
+# Set the working directory inside the container
+WORKDIR /app
 
-# Set environment variables for PostgreSQL
-ENV POSTGRES_DB=fern
-ENV POSTGRES_USER=fern
-ENV POSTGRES_PASSWORD=fern
+# Copy the source from the current directory to the working Directory inside the container
+COPY . .
 
-# Initialize the database and create the user and database (adjust commands as needed)
-RUN service postgresql start && \
-    su postgres -c "createuser --superuser $POSTGRES_USER" && \
-    su postgres -c "createdb --owner=$POSTGRES_USER $POSTGRES_DB" && \
-    su postgres -c "psql -c \"ALTER USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD';\""
+# Build the Go app
+RUN go mod tidy && go mod vendor && go build -o fern .
 
-# Set the working directory for the application
-WORKDIR /usr/src/app
+# Final stage: Run stage
+FROM alpine
 
-# Copy the compiled application binary into the container
-COPY ./bin/fern_linux_amd64 /usr/src/app/fern
+# Copy the pre-built binary file from the previous stage
+COPY --from=build-env /app/fern /app/fern
 
-# Expose the port that your application uses
-EXPOSE 8080
-RUN mkdir config
-RUN ls -l
-COPY ./config/config.yaml config/
-COPY wait-for-postgres.sh ./
+# Set the working directory in the container
+WORKDIR /app
 
-# Define the command to run your application
-# This should start PostgreSQL and then your application
-CMD service postgresql start && ./wait-for-postgres.sh localhost && ./fern
+# Command to run the binary
+CMD ["/app/fern"]
 
