@@ -26,7 +26,7 @@ func main() {
 }
 
 func initConfig() {
-	if err := config.LoadConfig("config/config.yaml"); err != nil {
+	if err := config.LoadConfig(); err != nil {
 		log.Fatalf("error: %v", err)
 	}
 }
