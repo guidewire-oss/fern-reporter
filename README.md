@@ -76,3 +76,7 @@ Fern is a Golang Gin-based API that connects to a PostgreSQL database. It is des
 
 - View reports at `http://[your-api-url]/reports/testruns`.
 - If using `make docker-run`, reports are available at `http://localhost:8080/reports/testruns`.
+
+### Additional Resources
+
+- [Deploying fern reporter service in kubernetes using kubevela](docs/kubevela/README.md)
