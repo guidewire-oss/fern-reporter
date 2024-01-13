@@ -319,19 +319,4 @@ template: {
 		// +usage=Specify whether to reuse PVC during maintenance
 		reusePVC: bool | *false // Default to false
 	}
-	// parameter: {
-	// 	// enableSuperuser: true
-	// 	// superuserSecretName: postgres-super-app
-	// 	name:           "postgres"
-	// 	namepsace:      "fern"
-	// 	initDatabase:   "fern"
-	// 	initOwner:      "fern"
-	// 	initSecretName: "fern-secret"
-	// 	instances:      2
-	// 	storageSize:    "0.5Gi"
-	// }
-	//
-	// context: {
-	// 	namespace: "fern"
-	// }
 }

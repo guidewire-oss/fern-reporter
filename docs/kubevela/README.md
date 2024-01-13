@@ -28,9 +28,9 @@ This command will set up a new Kubernetes cluster named `my-k3d-cluster` running
 Install KubeVela in your k3d cluster using Helm:
 
 ```bash
-helm repo add kubevela https://charts.kubevela.net/core
+helm repo add kubevela https://kubevela.github.io/charts
 helm repo update
-helm install --create-namespace -n vela-system kubevela kubevela/vela-core
+helm install --create-namespace -n vela-system kubevela kubevela/vela-core --wait
 ```
 
 Confirm the installation by checking the deployed pods:
@@ -46,19 +46,28 @@ Add the Cloud Native PostgreSQL Helm repository and install it:
 ```bash
 helm repo add cnpg https://cloudnative-pg.github.io/charts
 helm repo update
-helm install cnpg cnpg/cloud-native-pg
+helm upgrade --install cnpg \
+  --namespace cnpg-system \
+  --create-namespace \
+  cnpg/cloudnative-pg
 ```
 
 ## Step 4: Install Custom ComponentDefinitions
 
 Before deploying the Fern application, add the following custom ComponentDefinitions:
 
+1. **Install vela cli
+  
+   ```bash
+   curl -fsSl https://kubevela.io/script/install.sh | bash
+   ```
+
 1. **Gateway Component (gateway.cue):**
    
    This updates the existing gateway trait to support the service type LoadBalancer.
 
    ```bash
-   kubectl apply -f gateway.cue
+   vela def apply ./docs/kubevela/gateway.cue
    ```
 
 2. **Cloud Native PostgreSQL Component (cnpg.cue):**
@@ -66,7 +75,7 @@ Before deploying the Fern application, add the following custom ComponentDefinit
    Introduces a new component definition for Cloud Native PostgreSQL.
 
    ```bash
-   kubectl apply -f cnpg.cue
+   vela def apply ./docs/kubevela/cnpg.cue
    ```
 
 ## Step 5: Deploy the Fern Application
@@ -74,7 +83,7 @@ Before deploying the Fern application, add the following custom ComponentDefinit
 Deploy your application using the provided `vela.yaml` in a namespace called fern:
 
 ```bash
-kubectls creante ns fern
+kubectl create ns fern
 kubectl apply -f vela.yaml
 ```
 
