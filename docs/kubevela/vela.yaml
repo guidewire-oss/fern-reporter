@@ -1,0 +1,66 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: fern-reporter-server
+  namespace: fern
+spec:
+  components:
+    - name: postgres
+      type: cloud-native-postgres
+      properties:
+        name: postgres
+        namespace: fern
+        instances: 1
+        storageSize: 0.5Gi
+    - name: fern-server
+      type: webservice
+      properties:
+        image: anoop2811/fern-reporter:pr7
+        imagePullPolicy: Always
+      traits:
+        - type: gateway
+          properties:
+            exposeType: LoadBalancer
+            class: traefik
+            http:
+              "/": 8080
+        - type: service-binding
+          properties:
+            envMappings:
+              FERN_USERNAME:
+                secret: postgres-app
+                key: username
+              FERN_PASSWORD:
+                secret: postgres-app
+                key: password
+              FERN_HOST:
+                secret: postgres-app
+                key: host
+              FERN_PORT:
+                secret: postgres-app
+                key: port
+              FERN_DATABASE:
+                secret: postgres-app
+                key: dbname
+  policies:
+    - name: debug
+      type: debug
+  workflow:
+    steps:
+    - name: deploy-db
+      type: apply-component
+      properties:
+        component: postgres
+        namespace: fern
+    - name: suspend
+      type: suspend
+      properties:
+        duration: 30s
+    - name: deploy-fern-server
+      type: apply-component
+      dependsOn:
+        - deploy-db
+      properties:
+        component: fern-server
+        namespace: fern
+        cpu: 0.5

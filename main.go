@@ -32,7 +32,7 @@ func initConfig() {
 }
 
 func initDb() {
-	db.Init()
+	db.Initialize()
 }
 
 func initServer() {
