@@ -1,6 +1,7 @@
 package config
 
 import (
+	"embed"
 	"os"
 
 	"github.com/go-yaml/yaml"
@@ -29,8 +30,11 @@ type serverConfig struct {
 
 var configuration *config
 
-func LoadConfig(path string) error {
-	data, err := os.ReadFile(path)
+//go:embed config.yaml
+var configPath embed.FS
+
+func LoadConfig() error {
+	data, err := configPath.ReadFile("config.yaml")
 	if err != nil {
 		return err
 	}
