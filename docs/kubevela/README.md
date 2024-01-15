@@ -56,7 +56,7 @@ helm upgrade --install cnpg \
 
 Before deploying the Fern application, add the following custom ComponentDefinitions:
 
-1. **Install vela cli
+1. **Install vela cli:**
   
    ```bash
    curl -fsSl https://kubevela.io/script/install.sh | bash
@@ -84,7 +84,7 @@ Deploy your application using the provided `vela.yaml` in a namespace called fer
 
 ```bash
 kubectl create ns fern
-kubectl apply -f vela.yaml
+kubectl apply -f ./docs/kubevela/vela.yaml
 ```
 
 ## Verifying the Deployment
