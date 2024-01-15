@@ -1,9 +1,12 @@
 package config
 
 import (
+	"bytes"
+	"embed"
 	"fmt"
-	"github.com/spf13/viper"
 	"os"
+
+	"github.com/spf13/viper"
 )
 
 type config struct {
@@ -29,22 +32,27 @@ type serverConfig struct {
 
 var configuration *config
 
-func LoadConfig(path string) (*config, error) {
-	viper.SetConfigFile(path)
-	viper.AutomaticEnv()
+//go:embed config.yaml
+var configPath embed.FS
 
-	err := viper.ReadInConfig()
-
+func LoadConfig() (*config, error) {
+	v := viper.New()
+	v.SetConfigType("yaml")
+	data, err := configPath.ReadFile("config.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("error reading embedded config file:: %w", err)
+	}
+	err = v.ReadConfig(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("fatal error config file: %w", err)
 	}
 
-	err = viper.Unmarshal(&configuration)
+	err = v.Unmarshal(&configuration)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("Successfully loaded config file - ", viper.ConfigFileUsed())
+	fmt.Println("Successfully loaded config file - ", v.ConfigFileUsed())
 
 	if os.Getenv("FERN_USERNAME") != "" {
 		configuration.Db.Username = os.Getenv("FERN_USERNAME")

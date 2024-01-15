@@ -22,7 +22,7 @@ var gdb *gorm.DB
 //go:embed migrations
 var migrations embed.FS
 
-func Init() {
+func Initialize() {
 	pkger.Include("/pkg/db")
 	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		config.GetDb().Username,
@@ -32,9 +32,21 @@ func Init() {
 		config.GetDb().Database,
 	)
 
-	pdb, _ := sql.Open("postgres", dbUrl)
-	driver, _ := p.WithInstance(pdb, &p.Config{})
-	source, _ := iofs.New(migrations, "migrations")
+	pdb, err := sql.Open("postgres", dbUrl)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	driver, err := p.WithInstance(pdb, &p.Config{})
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	source, err := iofs.New(migrations, "migrations")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	m, err := migrate.NewWithInstance("iofs", source, "postgres", driver)
 	if err != nil {
 		log.Fatalln(err)

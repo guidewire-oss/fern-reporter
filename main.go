@@ -26,13 +26,13 @@ func main() {
 }
 
 func initConfig() {
-	if _, err := config.LoadConfig("config/config.yaml"); err != nil {
+	if _, err := config.LoadConfig(); err != nil {
 		log.Fatalf("error: %v", err)
 	}
 }
 
 func initDb() {
-	db.Init()
+	db.Initialize()
 }
 
 func initServer() {
