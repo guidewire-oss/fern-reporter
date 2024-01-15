@@ -1,3 +1,5 @@
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Guidewire/fern-reporter/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Guidewire/fern-reporter)
+
 ![Fern](https://github.com/guidewire/fern-reporter/raw/main/docs/images/logo-no-background.png)
 
 
