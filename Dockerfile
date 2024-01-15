@@ -1,30 +1,39 @@
 # Build stage
-FROM golang:1.21-alpine AS build-env
+FROM --platform=${BUILDPLATFORM} golang:1.21-alpine AS build-env
 
-# Set up necessary Go environment variables (optional, based on your app's needs)
-# ENV GO111MODULE=on \
-#     CGO_ENABLED=0 \
-#     GOOS=linux \
-#     GOARCH=amd64
+# Set up arguments for multi-architecture support
+ARG TARGETOS
+ARG TARGETARCH
+
+# Set up the environment
+ENV GO111MODULE=on \
+    CGO_ENABLED=0
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the source from the current directory to the working Directory inside the container
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+RUN go mod tidy && go mod download
+
+# Copy the source from the current directory to the Working Directory inside the container
 COPY . .
+COPY config/config.yaml ./
+RUN mkdir ./migrations
+COPY pkg/db/migrations ./migrations/
 
 # Build the Go app
-RUN go mod tidy && go mod vendor && go build -o fern .
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o fern .
 
-# Final stage: Run stage
-FROM alpine
-
-# Copy the pre-built binary file from the previous stage
-COPY --from=build-env /app/fern /app/fern
-
-# Set the working directory in the container
+# Final stage
+FROM --platform=${TARGETPLATFORM} alpine
 WORKDIR /app
 
-# Command to run the binary
-CMD ["/app/fern"]
+# Copy the binary from the build-env
+COPY --from=build-env /app/fern /app/
+COPY --from=build-env /app/config.yaml /app/
+RUN mkdir /app/migrations
+COPY --from=build-env /app/migrations/* /app/migrations/
 
+# Command to run
+ENTRYPOINT ["/app/fern"]
