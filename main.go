@@ -26,7 +26,7 @@ func main() {
 }
 
 func initConfig() {
-	if err := config.LoadConfig(); err != nil {
+	if _, err := config.LoadConfig(); err != nil {
 		log.Fatalf("error: %v", err)
 	}
 }
