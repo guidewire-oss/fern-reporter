@@ -23,7 +23,7 @@ var gdb *gorm.DB
 var migrations embed.FS
 
 func Initialize() {
-	pkger.Include("/pkg/db")
+	pkger.Include("/pkg/db") //nolint //SA4017
 	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		config.GetDb().Username,
 		config.GetDb().Password,
