@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -104,7 +105,11 @@ func UpdateTestRun(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
-	c.BindJSON(&testRun)
+	err := c.BindJSON(&testRun)
+	if err != nil {
+		log.Fatalf("error binding json: %v", err)
+	}
+
 	db.Save(&testRun)
 	c.JSON(http.StatusOK, &testRun)
 }
