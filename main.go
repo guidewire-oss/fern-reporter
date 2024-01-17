@@ -58,7 +58,10 @@ func initServer() {
 
 	// router.LoadHTMLGlob("pkg/views/*")
 	routers.RegisterRouters(router)
-	router.Run(serverConfig.Port)
+	err = router.Run(serverConfig.Port)
+	if err != nil {
+		log.Fatalf("error starting routes: %v", err)
+	}
 }
 
 func CalculateDuration(start, end time.Time) string {
