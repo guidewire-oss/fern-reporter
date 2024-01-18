@@ -34,7 +34,7 @@ cross-compile:
 # Testing
 test:
 	@echo "Testing..."
-	@go test ./...
+	@ginkgo -r
 
 docker-build-local: cross-compile
 	@echo "Building Local Docker image..."
