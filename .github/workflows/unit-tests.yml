@@ -1,0 +1,64 @@
+name: Unit-Test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: { }
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+
+  detect-noop:
+    permissions:
+      actions: write  # for fkirc/skip-duplicate-actions to skip or stop workflow runs
+    runs-on: ubuntu-22.04
+    outputs:
+      noop: ${{ steps.noop.outputs.should_skip }}
+    steps:
+      - name: Detect No-op Changes
+        id: noop
+        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          paths_ignore: '["**.md", "**.mdx", "**.png", "**.jpg"]'
+          do_not_skip: '["workflow_dispatch", "schedule", "push"]'
+        continue-on-error: true
+
+  unit-tests:
+    runs-on: ubuntu-22.04
+    needs: detect-noop
+    permissions:
+      actions: write
+    if: needs.detect-noop.outputs.noop != 'true'
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Install ginkgo
+        run: |
+          go install github.com/onsi/ginkgo/v2/ginkgo
+
+      - name: Run Make test
+        run: make test
+
+      - name: Update coverage report
+        uses: ncruces/go-coverage-report@v0
+        with:
+          report: true
+          chart: true
+          amend: true
+        if: |
+          github.event_name == 'push'
+        continue-on-error: true

@@ -19,7 +19,7 @@ jobs:
         run: |
           docker build -t docker.io/anoop2811/fern-reporter:${{ github.sha }} .
 
-      - name: Run Trivy vulnerability scanner for vela core
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'docker.io/anoop2811/fern-reporter:${{ github.sha }}'
