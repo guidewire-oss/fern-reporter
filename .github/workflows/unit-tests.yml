@@ -34,6 +34,8 @@ jobs:
     runs-on: ubuntu-22.04
     needs: detect-noop
     permissions:
+      contents: write
+      pull_requests: write
       actions: write
     if: needs.detect-noop.outputs.noop != 'true'
 
