@@ -1,5 +1,5 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Guidewire/fern-reporter/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Guidewire/fern-reporter)
-![Coverage](https://img.shields.io/badge/Coverage-0.0%25-yellow)
+![Coverage](https://img.shields.io/badge/Coverage-60.0%25-yellow)
 
 ![Fern](https://github.com/guidewire/fern-reporter/raw/main/docs/images/logo-no-background.png)
 
