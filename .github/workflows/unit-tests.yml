@@ -10,10 +10,8 @@ jobs:
 
   unit-tests:
     runs-on: ubuntu-22.04
-    needs: detect-noop
     permissions:
       contents: write
-    if: needs.detect-noop.outputs.noop != 'true'
 
     steps:
       - name: Set up Go
