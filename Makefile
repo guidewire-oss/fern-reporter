@@ -39,6 +39,7 @@ test:
 	echo 'mode: count' > coverage.out
 	find . -name "*.coverprofile" | xargs -I{} tail -q -n +2 {} >> coverage.out
 	find . -name "*.coverprofile" | xargs -I{} rm {}
+	go tool cover -func=coverage.out -o=coverage.out
 
 docker-build-local: cross-compile
 	@echo "Building Local Docker image..."
