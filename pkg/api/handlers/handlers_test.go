@@ -1,7 +1,6 @@
 package handlers_test
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http/httptest"
 
@@ -16,32 +15,19 @@ import (
 	"github.com/guidewire/fern-reporter/pkg/models"
 )
 
-var (
-	db     *sql.DB
-	gormDb *gorm.DB
-	mock   sqlmock.Sqlmock
-)
-
-var _ = BeforeSuite(func() {
-	db, mock, _ = sqlmock.New()
-
-	dialector := postgres.New(postgres.Config{
-		DSN:                  "sqlmock_db_0",
-		DriverName:           "postgres",
-		Conn:                 db,
-		PreferSimpleProtocol: true,
-	})
-	gormDb, _ = gorm.Open(dialector, &gorm.Config{})
-
-})
-
-var _ = AfterSuite(func() {
-	db.Close()
-})
-
 var _ = Describe("Handlers", func() {
-	Context("when GetTestRunAll handleer is invoked", func() {
-		It("should query db to fetch all records", func() {
+	Context("/api/testrun/ routes", func() {
+		It("should run GetTestRunAll", func() {
+			db, mock, _ := sqlmock.New()
+			defer db.Close()
+
+			dialector := postgres.New(postgres.Config{
+				DSN:                  "sqlmock_db_0",
+				DriverName:           "postgres",
+				Conn:                 db,
+				PreferSimpleProtocol: true,
+			})
+			gormDb, _ := gorm.Open(dialector, &gorm.Config{})
 
 			rows := sqlmock.NewRows([]string{"ID", "TestProjectName"}).
 				AddRow(1, "project 1").
@@ -68,8 +54,18 @@ var _ = Describe("Handlers", func() {
 		})
 	})
 
-	Context("When GetTestRunByID handler is invoked", func() {
-		It("should query DB with where clause filtering by id", func() {
+	Context("/api/testrun/id routes", func() {
+		It("should run GetTestRunByID", func() {
+			db, mock, _ := sqlmock.New()
+			defer db.Close()
+
+			dialector := postgres.New(postgres.Config{
+				DSN:                  "sqlmock_db_0",
+				DriverName:           "postgres",
+				Conn:                 db,
+				PreferSimpleProtocol: true,
+			})
+			gormDb, _ := gorm.Open(dialector, &gorm.Config{})
 
 			rows := sqlmock.NewRows([]string{"ID", "TestProjectName"}).
 				AddRow(123, "project 123")
@@ -88,7 +84,6 @@ var _ = Describe("Handlers", func() {
 			Expect(w.Code).To(Equal(200))
 
 			var testRun models.TestRun
-
 			if err := json.NewDecoder(w.Body).Decode(&testRun); err != nil {
 				Fail(err.Error())
 			}
