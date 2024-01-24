@@ -9,13 +9,19 @@ import (
 
 	"github.com/guidewire/fern-reporter/pkg/models"
 
-	"github.com/guidewire/fern-reporter/pkg/db"
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func CreateTestRun(c *gin.Context) {
+type Handler struct {
+	db *gorm.DB
+}
+
+func NewHandler(db *gorm.DB) *Handler {
+	return &Handler{db: db}
+}
+
+func (h *Handler) CreateTestRun(c *gin.Context) {
 	var testRun models.TestRun
 
 	if err := c.ShouldBindJSON(&testRun); err != nil {
@@ -24,7 +30,7 @@ func CreateTestRun(c *gin.Context) {
 		return // Stop further processing if there is a binding error
 	}
 
-	gdb := db.GetDb()
+	gdb := h.db
 	isNewRecord := testRun.ID == 0
 
 	// If it's not a new record, try to find it first
@@ -83,24 +89,25 @@ func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {
 	return nil
 }
 
-func GetTestRunAll(c *gin.Context) {
+func (h *Handler) GetTestRunAll(c *gin.Context) {
 	var testRuns []models.TestRun
-	db.GetDb().Find(&testRuns)
+	h.db.Find(&testRuns)
 	c.JSON(http.StatusOK, testRuns)
 }
 
-func GetTestRunByID(c *gin.Context) {
+func (h *Handler) GetTestRunByID(c *gin.Context) {
 	var testRun models.TestRun
 	id := c.Param("id")
-	db.GetDb().Where("id = ?", id).First(&testRun)
+	h.db.Where("id = ?", id).First(&testRun)
 	c.JSON(http.StatusOK, testRun)
+
 }
 
-func UpdateTestRun(c *gin.Context) {
+func (h *Handler) UpdateTestRun(c *gin.Context) {
 	var testRun models.TestRun
 	id := c.Param("id")
 
-	db := db.GetDb()
+	db := h.db
 	if err := db.Where("id = ?", id).First(&testRun).Error; err != nil {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
@@ -114,7 +121,7 @@ func UpdateTestRun(c *gin.Context) {
 	c.JSON(http.StatusOK, &testRun)
 }
 
-func DeleteTestRun(c *gin.Context) {
+func (h *Handler) DeleteTestRun(c *gin.Context) {
 	var testRun models.TestRun
 	id := c.Param("id")
 	if testRunID, err := strconv.Atoi(id); err != nil {
@@ -124,7 +131,7 @@ func DeleteTestRun(c *gin.Context) {
 		testRun.ID = uint64(testRunID)
 	}
 
-	result := db.GetDb().Delete(&testRun)
+	result := h.db.Delete(&testRun)
 	if result.Error != nil {
 		// If there was an error during the delete operation
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error deleting test run"})
@@ -138,18 +145,18 @@ func DeleteTestRun(c *gin.Context) {
 	c.JSON(http.StatusOK, &testRun)
 }
 
-func ReportTestRunAll(c *gin.Context) {
+func (h *Handler) ReportTestRunAll(c *gin.Context) {
 	var testRuns []models.TestRun
-	db.GetDb().Preload("SuiteRuns.SpecRuns").Find(&testRuns)
+	h.db.Preload("SuiteRuns.SpecRuns").Find(&testRuns)
 	c.HTML(http.StatusOK, "test_runs.html", gin.H{
 		"testRuns": testRuns,
 	})
 }
 
-func ReportTestRunById(c *gin.Context) {
+func (h *Handler) ReportTestRunById(c *gin.Context) {
 	var testRun models.TestRun
 	id := c.Param("id")
-	db.GetDb().Preload("SuiteRuns.SpecRuns").Where("id = ?", id).First(&testRun)
+	h.db.Preload("SuiteRuns.SpecRuns").Where("id = ?", id).First(&testRun)
 	c.HTML(http.StatusOK, "test_runs.html", gin.H{
 		"testRuns": []models.TestRun{testRun},
 	})
