@@ -2,8 +2,10 @@ package handlers_test
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"net/http/httptest"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
@@ -38,6 +40,20 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	db.Close()
 })
+
+// Define a custom type that implements the driver.Valuer and sql.Scanner interfaces
+type myTime time.Time
+
+// Implement the driver.Valuer interface
+func (mt myTime) Value() (driver.Value, error) {
+	return time.Time(mt), nil
+}
+
+// Implement the sql.Scanner interface
+func (mt *myTime) Scan(value interface{}) error {
+	*mt = myTime(value.(time.Time))
+	return nil
+}
 
 var _ = Describe("Handlers", func() {
 	Context("when GetTestRunAll handleer is invoked", func() {
@@ -94,6 +110,83 @@ var _ = Describe("Handlers", func() {
 			}
 			Expect(int(testRun.ID)).To(Equal(123))
 			Expect(testRun.TestProjectName).To(Equal("project 123"))
+		})
+	})
+
+	/*Context("When UpdateTestRun handler is invoked", func() {
+		It("should update record from DB by id", func() {
+
+			// testRunRow := sqlmock.NewRows([]string{"ID", "TestProjectName"}).
+			// 	AddRow(123, "project 123", "321", myTime(time.Now()), time.Now)
+
+			testRunRow := sqlmock.NewRows([]string{"id", "test_project_name"}).
+				AddRow(1, "Sample Project")
+
+			// _ := sqlmock.NewRows([]string{"id", "test_run_id", "suite_name", "start_time", "end_time"}).
+			// 	AddRow(1, 1, "Sample Suite", myTime(time.Now()), myTime(time.Now()))
+
+			// _ := sqlmock.NewRows([]string{"id", "suite_id", "spec_description", "status", "message", "start_time", "end_time"}).
+			// 	AddRow(1, 1, "Sample Spec 1", "passed", "All checks passed", myTime(time.Now()), myTime(time.Now())).
+			// 	AddRow(2, 1, "Sample Spec 2", "failed", "Assertion failed", myTime(time.Now()), myTime(time.Now()))
+
+			// mock.ExpectQuery("SELECT (.+) FROM \"test_runs\" WHERE id = \\$1").
+			// 	WithArgs("123").
+			// 	WillReturnRows(testRunRow)
+
+			fmt.Println(testRunRow)
+
+			mock.ExpectQuery("SELECT (.+) FROM \"test_runs\" WHERE id = \\$1").WithArgs("1").WillReturnRows(testRunRow)
+			//mock.ExpectQuery("SELECT (.+) FROM \"suite_runs\" WHERE test_run_id = \\$1").WithArgs("1").WillReturnRows(suiteRunRow)
+			//mock.ExpectQuery("SELECT (.+) FROM \"spec_runs\" WHERE suite_id = \\$1").WithArgs("1").WillReturnRows(specRunRow)
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			c.Params = append(c.Params, gin.Param{Key: "id", Value: "1"})
+			handler := handlers.NewHandler(gormDb)
+			handler.UpdateTestRun(c)
+
+			fmt.Print(w)
+
+			Expect(w.Code).To(Equal(200))
+
+			var testRun models.TestRun
+
+			if err := json.NewDecoder(w.Body).Decode(&testRun); err != nil {
+				Fail(err.Error())
+			}
+			Expect(int(testRun.ID)).To(BeNil())
+
+			Expect(testRun.TestProjectName).To(BeNil())
+		})
+	})*/
+
+	Context("When DeleteTestRun handler is invoked", func() {
+		It("should delete record from DB by id", func() {
+
+			testRunRow := sqlmock.NewResult(1, 1)
+
+			mock.ExpectBegin()
+			mock.ExpectExec("DELETE FROM \"test_runs\" WHERE \"test_runs\".\"id\" = \\$1").
+				WithArgs(123).
+				WillReturnResult(testRunRow)
+			mock.ExpectCommit()
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			c.Params = append(c.Params, gin.Param{Key: "id", Value: "123"})
+			handler := handlers.NewHandler(gormDb)
+			handler.DeleteTestRun(c)
+
+			Expect(w.Code).To(Equal(200))
+
+			var testRun models.TestRun
+
+			if err := json.NewDecoder(w.Body).Decode(&testRun); err != nil {
+				Fail(err.Error())
+			}
+			Expect(int(testRun.ID)).To(Equal(123))
 		})
 	})
 })
