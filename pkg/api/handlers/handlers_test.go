@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"time"
 
@@ -24,7 +27,7 @@ var (
 	mock   sqlmock.Sqlmock
 )
 
-var _ = BeforeSuite(func() {
+var _ = BeforeEach(func() {
 	db, mock, _ = sqlmock.New()
 
 	dialector := postgres.New(postgres.Config{
@@ -37,7 +40,7 @@ var _ = BeforeSuite(func() {
 
 })
 
-var _ = AfterSuite(func() {
+var _ = AfterEach(func() {
 	db.Close()
 })
 
@@ -171,6 +174,7 @@ var _ = Describe("Handlers", func() {
 				WithArgs(123).
 				WillReturnResult(testRunRow)
 			mock.ExpectCommit()
+			mock.ExpectClose()
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
@@ -188,5 +192,94 @@ var _ = Describe("Handlers", func() {
 			}
 			Expect(int(testRun.ID)).To(Equal(123))
 		})
+
+		It("should handle error", func() {
+
+			mock.ExpectBegin()
+			mock.ExpectExec("DELETE FROM \"test_runs\" WHERE \"test_runs\".\"id\" = \\$1").
+				WithArgs(123).
+				WillReturnError(sql.ErrConnDone)
+			mock.ExpectRollback()
+			mock.ExpectClose()
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			c.Params = append(c.Params, gin.Param{Key: "id", Value: "123"})
+			handler := handlers.NewHandler(gormDb)
+			handler.DeleteTestRun(c)
+
+			Expect(w.Code).To(Not(Equal(200)))
+			Expect(w.Code).To((Equal(http.StatusInternalServerError)))
+
+			var testRun models.TestRun
+
+			if err := json.NewDecoder(w.Body).Decode(&testRun); err != nil {
+				Fail(err.Error())
+			}
+		})
+
+		It("should handle scenario of no rows affected", func() {
+
+			mock.ExpectBegin()
+			mock.ExpectExec("DELETE FROM \"test_runs\" WHERE \"test_runs\".\"id\" = \\$1").
+				WithArgs(123).
+				WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectCommit()
+			mock.ExpectClose()
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			c.Params = append(c.Params, gin.Param{Key: "id", Value: "123"})
+			handler := handlers.NewHandler(gormDb)
+			handler.DeleteTestRun(c)
+
+			Expect(w.Code).To((Equal(http.StatusNotFound)))
+
+			// Ensure you call Result before reading the body
+			result := w.Result()
+
+			// Extract the response body as a string
+			body, err := io.ReadAll(result.Body)
+			if err != nil {
+				// Handle the error
+				fmt.Printf("Error reading response body: %v", err)
+				return
+			}
+
+			// Parse the JSON response
+			var response map[string]interface{}
+			if err := json.Unmarshal(body, &response); err != nil {
+				// Handle the error
+				fmt.Printf("Error parsing JSON response: %v", err)
+				return
+			}
+
+			// Extract the error message
+			errorMessage, _ := response["error"].(string)
+			Expect(errorMessage).To((Equal("test run not found")))
+
+		})
+
+		It("should handle invalid id format", func() {
+			mock.ExpectBegin()
+			mock.ExpectExec("DELETE FROM \"test_runs\" WHERE \"test_runs\".\"id\" = \\$1").
+				WithArgs(123).
+				WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectCommit()
+			mock.ExpectClose()
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			c.Params = append(c.Params, gin.Param{Key: "id", Value: "invalidID"})
+			handler := handlers.NewHandler(gormDb)
+			handler.DeleteTestRun(c)
+
+			Expect(w.Code).To((Equal(http.StatusNotFound)))
+
+		})
+
 	})
 })

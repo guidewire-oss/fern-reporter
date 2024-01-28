@@ -132,6 +132,7 @@ func (h *Handler) DeleteTestRun(c *gin.Context) {
 	}
 
 	result := h.db.Delete(&testRun)
+	fmt.Println(result)
 	if result.Error != nil {
 		// If there was an error during the delete operation
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error deleting test run"})
