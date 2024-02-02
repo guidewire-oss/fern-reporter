@@ -89,5 +89,5 @@ Fern is a Golang Gin-based API that connects to a PostgreSQL database. It is des
 Thanks to everyone, that is supporting this project. We are thankful, for evey contribution, no matter its size!
 
 <a href="https://github.com/Guidewire/fern-reporter/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Guidewire/glasskube" />
+  <img src="https://contrib.rocks/image?repo=Guidewire/fern-reporter" />
 </a>
