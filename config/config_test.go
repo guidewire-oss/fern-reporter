@@ -25,6 +25,22 @@ var _ = Describe("Config", func() {
 			Expect(appConfig.Db.MaxIdleConns).To(Equal(10))
 		})
 
+		It("should get non-nil DB", func() {
+
+			_, err := config.LoadConfig()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(config.GetDb()).ToNot(BeNil())
+		})
+
+		It("should get non-nil Server", func() {
+
+			_, err := config.LoadConfig()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(config.GetServer()).ToNot(BeNil())
+		})
+
 	})
 
 })
