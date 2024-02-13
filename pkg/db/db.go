@@ -70,4 +70,6 @@ func GetDb() *gorm.DB {
 }
 
 func CloseDb() {
+	sqlDB, _ := gdb.DB()
+	sqlDB.Close()
 }
