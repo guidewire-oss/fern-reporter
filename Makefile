@@ -41,7 +41,7 @@ test:
 	go tool cover -func=coverage.out -o=coverage.out
 	cat coverage.out
 
-docker-build-local: cross-compile
+docker-build: cross-compile
 	@echo "Building Local Docker image..."
 	@docker build -t fern-app . -f Dockerfile-local
 
