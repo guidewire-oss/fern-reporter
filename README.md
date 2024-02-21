@@ -43,7 +43,7 @@ Fern is a Golang Gin-based API that connects to a PostgreSQL database. It is des
 2. **Start the API Server**: Navigate to the project directory and start the server.
    ```bash
    cd fern-reporter
-   make docker-run
+   make docker-run-local
    ```
 
 ### Integrating the Client into Ginkgo Test Suites
