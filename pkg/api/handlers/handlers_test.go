@@ -46,9 +46,6 @@ var _ = AfterEach(func() {
 	db.Close()
 })
 
-// Define a custom type that implements the driver.Valuer and sql.Scanner interfaces
-type myTime time.Time
-
 var _ = Describe("Handlers", func() {
 	Context("when GetTestRunAll handler is invoked", func() {
 		It("should query db to fetch all records", func() {
@@ -108,7 +105,7 @@ var _ = Describe("Handlers", func() {
 	})
 
 	Context("when createTestRun handler is invoked", func() {
-		It("and test run dpesn't exist, it should create one and return 201 OK", func() {
+		It("and test run doesn't exist, it should create one and return 201 OK", func() {
 			expectedTestRun := models.TestRun{
 				ID:              0,
 				TestProjectName: "TestProject",
@@ -204,11 +201,226 @@ var _ = Describe("Handlers", func() {
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
 
-		//
+		It("and test run record exists, it should handle error while finding existing record and return 404 Not Found", func() {
+			expectedTestRun := models.TestRun{
+				ID:              1,
+				TestProjectName: "TestProject",
+				StartTime:       time.Time{},
+				EndTime:         time.Time{},
+				TestSeed:        1,
+				SuiteRuns: []models.SuiteRun{
+					{
+						ID:        1,
+						TestRunID: 1,
+						SuiteName: "TestSuite",
+						StartTime: time.Now(),
+						EndTime:   time.Now(),
+						SpecRuns: []models.SpecRun{
+							{
+								ID:              1,
+								SuiteID:         1,
+								SpecDescription: "TestSpec",
+								Status:          "Passed",
+								Message:         "",
+								StartTime:       time.Now(),
+								EndTime:         time.Now(),
+							},
+						},
+					},
+				},
+			}
+
+			_, err := json.Marshal(expectedTestRun.SuiteRuns)
+			if err != nil {
+				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				return
+			}
+
+			mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT 1`)).
+				WithArgs(expectedTestRun.ID).
+				WillReturnError(errors.New("Record not found DB error"))
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			// Create a new request with JSON payload
+			jsonStr := []byte(`{"id": 1, "test_project_name":"TestProject"}`)
+			req, err := http.NewRequest("POST", "/", bytes.NewBuffer(jsonStr))
+			if err != nil {
+				fmt.Printf("%v", err)
+			}
+
+			req.Header.Set("Content-Type", "application/json")
+
+			c.Request = req
+			handler := handlers.NewHandler(gormDb)
+			handler.CreateTestRun(c)
+
+			// Check the response status code
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+
+		})
+
+		It("and error occurs during ProcessTags, it should handle error and return 500 Internal Server Error", func() {
+			var testRun = models.TestRun{
+				ID:              1,
+				TestProjectName: "TestProject",
+				StartTime:       time.Time{},
+				EndTime:         time.Time{},
+				TestSeed:        1,
+				SuiteRuns: []models.SuiteRun{
+					{
+						ID:        1,
+						TestRunID: 1,
+						SuiteName: "TestSuite",
+						StartTime: time.Now(),
+						EndTime:   time.Now(),
+						SpecRuns: []models.SpecRun{
+							{
+								ID:              1,
+								SuiteID:         1,
+								SpecDescription: "TestSpec",
+								Status:          "Passed",
+								Message:         "",
+								StartTime:       time.Now(),
+								EndTime:         time.Now(),
+								Tags: []models.Tag{
+									{
+										ID:   1,
+										Name: "TagName",
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			//mock.ExpectBegin()
+			testRuns := sqlmock.NewRows([]string{"id", "TestProjectName"}).
+				AddRow(1, "project 1")
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT 1`)).
+				WithArgs(testRun.ID).
+				WillReturnRows(testRuns)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "tags" WHERE id = $1 ORDER BY "tags"."id" LIMIT 1`)).
+				WithArgs(1).
+				WillReturnError(errors.New("database error"))
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			testRunJson, err := json.Marshal(testRun)
+			if err != nil {
+				// Handle error
+				fmt.Println("Error:", err)
+				return
+			}
+
+			req, err := http.NewRequest("POST", "/", bytes.NewBuffer(testRunJson))
+			if err != nil {
+				fmt.Printf("%v", err)
+			}
+
+			req.Header.Set("Content-Type", "application/json")
+
+			c.Request = req
+			handler := handlers.NewHandler(gormDb)
+			handler.CreateTestRun(c)
+
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+			Expect(w.Body.String()).To(ContainSubstring("error processing tags"))
+
+		})
+
+		It("and error occurs during Save/Update of testRun record, it should handle error and return 500 Internal Server Error", func() {
+			var testRun = models.TestRun{
+				ID:              1,
+				TestProjectName: "TestProject",
+				StartTime:       time.Time{},
+				EndTime:         time.Time{},
+				TestSeed:        1,
+				SuiteRuns: []models.SuiteRun{
+					{
+						ID:        1,
+						TestRunID: 1,
+						SuiteName: "TestSuite",
+						StartTime: time.Now(),
+						EndTime:   time.Now(),
+						SpecRuns: []models.SpecRun{
+							{
+								ID:              1,
+								SuiteID:         1,
+								SpecDescription: "TestSpec",
+								Status:          "Passed",
+								Message:         "",
+								StartTime:       time.Now(),
+								EndTime:         time.Now(),
+								Tags: []models.Tag{
+									{
+										ID:   1,
+										Name: "TagName",
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			testRuns := sqlmock.NewRows([]string{"id", "TestProjectName"}).
+				AddRow(1, "project 1")
+
+			//mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT 1`)).
+				WithArgs(testRun.ID).
+				WillReturnRows(testRuns)
+
+			rows := sqlmock.NewRows([]string{"id"})
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "tags" WHERE name = $1 ORDER BY "tags"."id" LIMIT 1`)).WithArgs("TagName").WillReturnRows(rows)
+
+			mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "tags" ("name") VALUES ($1) RETURNING "id"`)).
+				WithArgs("TagName").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+			mock.ExpectCommit()
+
+			mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(`UPDATE "test_runs" SET "test_project_name"=$1,"test_seed"=$2,"start_time"=$3,"end_time"=$4 WHERE "id" = $5`)).
+				WithArgs(testRun.TestProjectName, testRun.TestSeed, testRun.StartTime, testRun.EndTime, testRun.ID).
+				WillReturnError(errors.New("unable to save record"))
+			mock.ExpectRollback()
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			testRunJson, err := json.Marshal(testRun)
+			if err != nil {
+				// Handle error
+				fmt.Println("Error:", err)
+				return
+			}
+
+			req, err := http.NewRequest("POST", "/", bytes.NewBuffer(testRunJson))
+			if err != nil {
+				fmt.Printf("%v", err)
+			}
+
+			req.Header.Set("Content-Type", "application/json")
+
+			c.Request = req
+			handler := handlers.NewHandler(gormDb)
+			handler.CreateTestRun(c)
+
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+			Expect(w.Body.String()).To(ContainSubstring("error saving record"))
+
+		})
 
 	})
 
-	//Context("when ProcessTags is invoked", func() {
 	Context("When ProcessTags is invoked", func() {
 		var testRun = models.TestRun{
 			ID:              0,
@@ -309,7 +521,7 @@ var _ = Describe("Handlers", func() {
 		})
 	})
 
-	Context("When tag already exists in the database", func() {
+	Context("When ProcessTags is invoked and tag already exists in the database", func() {
 		var testRun = models.TestRun{
 			ID:              0,
 			TestProjectName: "TestProject",
@@ -361,7 +573,7 @@ var _ = Describe("Handlers", func() {
 		})
 	})
 
-	Context("When provided with an empty test run", func() {
+	Context("When ProcessTags is invoked and is provided with an empty test run", func() {
 		It("should not return an error", func() {
 			testRun := &models.TestRun{}
 			err := handlers.ProcessTags(gormDb, testRun)
@@ -369,7 +581,7 @@ var _ = Describe("Handlers", func() {
 		})
 	})
 
-	Context("When tag is not found", func() {
+	Context("When ProcessTags is invoked and tag is not found", func() {
 		It("should create a new tag", func() {
 			tag := models.Tag{Name: "NewTag"}
 			specRun := models.SpecRun{Tags: []models.Tag{tag}}
@@ -390,7 +602,7 @@ var _ = Describe("Handlers", func() {
 		})
 	})
 
-	Context("When tag is not found", func() {
+	Context("When ProcessTags is invoked and tag is not found", func() {
 		It("and tag creation has an error, it should return the error", func() {
 			tag := models.Tag{Name: "NewTag"}
 			specRun := models.SpecRun{Tags: []models.Tag{tag}}
@@ -411,7 +623,7 @@ var _ = Describe("Handlers", func() {
 		})
 	})
 
-	Context("When tag creation fails due to unknown error", func() {
+	Context("When ProcessTags is invoked and tag creation fails due to unknown error", func() {
 		var testRun = models.TestRun{
 			ID:              0,
 			TestProjectName: "TestProject",
@@ -470,7 +682,6 @@ var _ = Describe("Handlers", func() {
 				WithArgs("123").
 				WillReturnRows(rows)
 
-			// Bind JSON data to gin Context
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -510,7 +721,6 @@ var _ = Describe("Handlers", func() {
 				},
 			}
 
-			//mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT 1`)).
 				WithArgs("1").
 				WillReturnRows(mock.NewRows([]string{"id", "test_project_name", "test_seed"}).
@@ -526,7 +736,6 @@ var _ = Describe("Handlers", func() {
 				fmt.Printf("%v", err)
 			}
 
-			// Set the Content-Type header to application/json
 			req.Header.Set("Content-Type", "application/json")
 
 			c.Request = req
@@ -539,7 +748,7 @@ var _ = Describe("Handlers", func() {
 
 		})
 
-		It("with bad POST payload, it should return error", func() {
+		It("with wrong POST payload, it should return status 200 OK", func() {
 
 			expectedTestRun := models.TestRun{
 				ID:              1,
@@ -556,7 +765,6 @@ var _ = Describe("Handlers", func() {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
-			// Create a new request with JSON payload
 			jsonStr := []byte(`{"BAD_PAYLOAD_KEY": "BAD_VALUE"}`)
 
 			req, err := http.NewRequest("POST", "/endpoint", bytes.NewBuffer(jsonStr))
@@ -564,7 +772,6 @@ var _ = Describe("Handlers", func() {
 				fmt.Printf("%v", err)
 			}
 
-			// Set the Content-Type header to application/json
 			req.Header.Set("Content-Type", "application/json")
 
 			c.Request = req
@@ -584,6 +791,68 @@ var _ = Describe("Handlers", func() {
 			Expect(expectedTestRun.StartTime).To(BeTemporally("==", responseBody.StartTime))
 			Expect(expectedTestRun.EndTime).To(BeTemporally("==", responseBody.EndTime))
 			Expect(expectedTestRun.TestSeed).To(Equal(responseBody.TestSeed))
+
+		})
+
+		It("with invalid JSON payload, it should return error", func() {
+
+			expectedTestRun := models.TestRun{
+				ID:              1,
+				TestProjectName: "TestProject",
+				StartTime:       time.Now(),
+				EndTime:         time.Now(),
+				SuiteRuns: []models.SuiteRun{
+					{
+						ID:        1,
+						TestRunID: 1,
+						SuiteName: "TestSuite",
+						StartTime: time.Now(),
+						EndTime:   time.Now(),
+						SpecRuns: []models.SpecRun{
+							{
+								ID:              1,
+								SuiteID:         1,
+								SpecDescription: "TestSpec",
+								Status:          "Passed",
+								Message:         "",
+								StartTime:       time.Now(),
+								EndTime:         time.Now(),
+							},
+						},
+					},
+				},
+			}
+
+			//mock.ExpectBegin()
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT 1`)).
+				WithArgs("1").
+				WillReturnRows(mock.NewRows([]string{"id", "test_project_name", "test_seed"}).
+					AddRow(expectedTestRun.ID, expectedTestRun.TestProjectName, expectedTestRun.TestSeed))
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			// Create a new request with JSON payload
+			jsonStr := []byte(`{"id": 1, "test_project_name123":"Updated Project"}`)
+
+			req, err := http.NewRequest("POST", "/endpoint", bytes.NewBuffer(jsonStr))
+			if err != nil {
+				fmt.Printf("%v", err)
+			}
+
+			req.Header.Set("Content-Type", "application/json")
+
+			c.Request = req
+			c.Params = append(c.Params, gin.Param{Key: "id", Value: "1"})
+			handler := handlers.NewHandler(gormDb)
+			handler.UpdateTestRun(c)
+
+			// Create a map to represent the response
+			var responseBody models.TestRun
+			err = json.Unmarshal(w.Body.Bytes(), &responseBody)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusOK))
 
 		})
 	})
