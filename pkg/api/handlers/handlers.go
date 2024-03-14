@@ -147,7 +147,7 @@ func (h *Handler) DeleteTestRun(c *gin.Context) {
 
 func (h *Handler) ReportTestRunAll(c *gin.Context) {
 	var testRuns []models.TestRun
-	h.db.Preload("SuiteRuns.SpecRuns").Find(&testRuns)
+	h.db.Preload("SuiteRuns.SpecRuns.Tags").Find(&testRuns)
 	c.HTML(http.StatusOK, "test_runs.html", gin.H{
 		"testRuns": testRuns,
 	})
