@@ -4,9 +4,22 @@ import (
 	"github.com/guidewire/fern-reporter/config"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
+	"os"
 )
 
-var _ = Describe("Config", func() {
+// Mock the file reading function
+type MockFileReader struct {
+	mock.Mock
+}
+
+func (m *MockFileReader) ReadFile(filename string) ([]byte, error) {
+	args := m.Called(filename)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+var _ = Describe("When LoadConfig is invoked", func() {
+
 	Context("LoadConfig", func() {
 		It("should load the configuration from a file", func() {
 
@@ -25,6 +38,42 @@ var _ = Describe("Config", func() {
 			Expect(appConfig.Db.MaxIdleConns).To(Equal(10))
 		})
 
+		It("should get non-nil DB", func() {
+
+			_, err := config.LoadConfig()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(config.GetDb()).ToNot(BeNil())
+		})
+
+		It("should get non-nil Server", func() {
+
+			_, err := config.LoadConfig()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(config.GetServer()).ToNot(BeNil())
+		})
+
+	})
+
+	It("should override configuration with environment variables", func() {
+
+		os.Setenv("FERN_USERNAME", "fern")
+		os.Setenv("FERN_PASSWORD", "fern")
+		os.Setenv("FERN_HOST", "localhost")
+		os.Setenv("FERN_PORT", "5432")
+		os.Setenv("FERN_DATABASE", "fern")
+
+		//v := viper.New()
+		result, err := config.LoadConfig()
+
+		Expect(err).To(BeNil())
+		Expect(result).ToNot(BeNil())
+		Expect(result.Db.Username).To(Equal("fern"))
+		Expect(result.Db.Password).To(Equal("fern"))
+		Expect(result.Db.Host).To(Equal("localhost"))
+		Expect(result.Db.Port).To(Equal("5432"))
+		Expect(result.Db.Database).To(Equal("fern"))
 	})
 
 })
