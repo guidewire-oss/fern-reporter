@@ -161,3 +161,9 @@ func (h *Handler) ReportTestRunById(c *gin.Context) {
 		"testRuns": []models.TestRun{testRun},
 	})
 }
+
+func (h *Handler) Ping(c *gin.Context) {
+	c.JSON(200, gin.H{
+		"message": "Fern Reporter is running!",
+	})
+}
