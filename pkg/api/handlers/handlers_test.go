@@ -973,6 +973,24 @@ var _ = Describe("Handlers", func() {
 			Expect(w.Code).To((Equal(http.StatusNotFound)))
 
 		})
+	})
+
+	Context("When Ping handler is invoked", func() {
+		It("it should return an HTTP status code of 200, indicating that the 'Fern Reporter' service is operational", func() {
+			gin.SetMode(gin.TestMode)
+
+			w := httptest.NewRecorder()
+			c, r := gin.CreateTestContext(w)
+
+			handler := handlers.NewHandler(gormDb)
+			r.GET("/ping", handler.Ping)
+			c.Request, _ = http.NewRequest(http.MethodGet, "/ping", nil)
+			r.ServeHTTP(w, c.Request)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			expectedBody := `{"message":"Fern Reporter is running!"}`
+			Expect(w.Body.String()).To(Equal(expectedBody))
+		})
 
 	})
 
