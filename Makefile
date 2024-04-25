@@ -34,12 +34,7 @@ cross-compile:
 # Testing
 test:
 	@echo "Testing..."
-	@ginkgo -r $(TEST_FLAGS) -cover -covermode=count
-	@echo 'mode: count' > coverage.out
-	@find . -name "*coverprofile*" | xargs -I{} tail -q -n +2 {} >> coverage.out
-	@find . -name "*coverprofile*" | xargs -I{} rm {}
-	go tool cover -func=coverage.out -o=coverage.out
-	cat coverage.out
+	@go test -r $(TEST_FLAGS) -coverprofile=profile.cov ./...
 
 docker-build: cross-compile
 	@echo "Building Local Docker image..."

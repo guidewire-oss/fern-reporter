@@ -33,28 +33,10 @@ jobs:
       - name: Run Make test
         run: make test
 
-      - name: Go Coverage Badge  # Pass the `coverage.out` output to this action
-        uses: tj-actions/coverage-badge-go@v2
+      - name: Publish coverage  # Pass the `coverage.out` output to this action
+        uses: codecov/codecov-action@v4.3.0
         with:
-          filename: coverage.out
+          file: profile.cov
+          token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Verify Changed files
-        uses: tj-actions/verify-changed-files@v17
-        id: verify-changed-files
-        with:
-          files: README.md
 
-      - name: Commit changes
-        if: steps.verify-changed-files.outputs.files_changed == 'true'
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add README.md
-          git commit -m "chore: Updated coverage badge."
-
-      - name: Push changes
-        if: steps.verify-changed-files.outputs.files_changed == 'true'
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ github.token }}
-          branch: ${{ github.head_ref }}

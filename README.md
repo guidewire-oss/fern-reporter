@@ -3,6 +3,18 @@
 
 ![Fern](https://github.com/guidewire/fern-reporter/raw/main/docs/images/logo-no-background.png)
 
+<p align="center">
+    <a href="https://github.com/guidewire/fern-reporter/blob/main/LICENSE" alt="License">
+        <img src="https://badgen.net/github/license/guidewire/fern-reporter/" /></a>
+    <!-- <a href="https://github.com/guidewire/fern-reporter/actions" alt="Fern Reporter Release"> -->
+    <!--     <img alt="GitHub Workflow Status (with event)" src="https://img.shields.io/github/actions/workflow/status/guidewire/fern-reporter/build.yml?event=pull_request"></a> -->
+    <a href="https://goreportcard.com/report/github.com/guidewire/fern-reporter" alt="Go Report Card">
+        <img src="https://goreportcard.com/badge/github.com/guidewire/fern-reporter" /></a>
+    <a href="https://codecov.io/gh/guidewire/fern-reporter" alt="Code Coverage">
+        <img src="https://codecov.io/gh/guidewire/fern-reporter/branch/main/graph/badge.svg" /></a>
+    <a href="https://github.com/guidewire/fern-reporter/graphs/contributors" alt="Release">
+        <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/guidewire/fern-reporter"></a>
+</p>
 
 ## Introduction
 
