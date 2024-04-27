@@ -60,30 +60,8 @@ Fern is a Golang Gin-based API that connects to a PostgreSQL database. It is des
 
 ### Integrating the Client into Ginkgo Test Suites
 
-1. **Add the Fern dependency to your test project**:
-
-   ```bash
-   go get -u github.com/guidewire/fern-reporter
-   ```
-2. **Add the Fern Client to your Ginkgo test suite**:
-   
-   Import the fern client package
-   ```go
-   import fern "github.com/guidewire/fern-reporter/pkg/client"
-   ```
-
-   ```go
-   var _ = ReportAfterSuite("", func(report Report) {
-       f := fern.New("Example Test",
-           fern.WithBaseURL("http://localhost:8080/"),
-       )
-
-       err := f.Report("example test", report)
-
-       Expect(err).To(BeNil(), "Unable to create reporter file")
-   })
-   ```
-   Replace `http://localhost:8080/` with your API server's URL and specify the project name in `f.Report`.
+  Refer the client repository to integrate the client to Ginkgo Test Suites: 
+  https://github.com/Guidewire/fern-ginkgo-client
 
 2. **Run Your Tests**: After adding the client, run your Ginkgo tests normally.
 
