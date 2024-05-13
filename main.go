@@ -1,8 +1,10 @@
 package main
 
 import (
+	"github.com/guidewire/fern-reporter/pkg/auth"
 	"html/template"
 	"log"
+	"os"
 
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
@@ -39,6 +41,10 @@ func initServer() {
 	serverConfig := config.GetServer()
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
+	if err := auth.UpdateJWKs(os.Getenv("AUTH_KEYS_ENDPOINT")); err != nil {
+		log.Fatalf("error getting JWKs: %v", err)
+	}
+	router.Use(auth.JWTAuthMiddleware(os.Getenv("AUTH_KEYS_ENDPOINT")))
 	router.Use(cors.New(cors.Config{
 		AllowMethods:     []string{"GET", "POST"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "ACCESS_TOKEN"},
