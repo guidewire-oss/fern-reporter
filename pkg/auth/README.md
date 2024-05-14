@@ -5,15 +5,16 @@ It includes functionality for fetching, updating, and caching JSON Web Keys (JWK
 
 ## Features
 
-- **Custom HTTP Client:** Configured to optionally skip TLS verification for development purposes.
 - **JWKs Fetching and Caching:** Efficient management of fetching and caching JWKs for JWT validation.
 - **JWT Validation Middleware:** Middleware that validates JWTs from the `Authorization` header of incoming HTTP requests using the cached JWKs.
+- **Offline Validation:** Since the JWKs are cached, validation can be performed offline.
 
 ## Components
 
 ### HTTP Client Configuration
 
 The package defines a `customHTTPClient` which returns an HTTP client configured with a specific timeout and optional TLS settings.
+**This is temporary.**
 
 ```plaintext
 function customHTTPClient
@@ -25,10 +26,10 @@ end function
 
 ### Fetching JWKs
 
-The `fetchJWKs` function handles fetching JWKs from a provided URL, checking the HTTP response, and parsing the JWKs.
+The `fetchJWKS` function handles fetching JWKs from a provided URL, checking the HTTP response, and parsing the JWKs.
 
 ```plaintext
-function fetchJWKs(url)
+function fetchJWKS(url)
   create HTTP client
   send GET request to url
   if response is OK then
@@ -43,10 +44,10 @@ end function
 
 ### Updating JWKs
 
-The `UpdateJWKs` function updates the cached JWK set using a new set fetched from a specified URL. This operation is thread-safe.
+The `UpdateJWKS` function updates the cached JWK set using a new set fetched from a specified URL. This operation is thread-safe.
 
 ```plaintext
-function UpdateJWKs(url)
+function UpdateJWKS(url)
   fetch JWKs from url
   if fetch successful then
     lock JWK cache
@@ -62,12 +63,12 @@ end function
 
 ### Retrieving JWKs with Caching
 
-The `getJWKs` function retrieves the cached JWK set, updating it if it's stale (more than an hour old).
+The `getJWKS` function retrieves the cached JWK set, updating it if it's stale (more than an 12 hours old).
 
 ```plaintext
-function getJWKs(url)
+function getJWKS(url)
   read lock on JWK cache
-  if JWKs are older than 1 hour then
+  if JWKs are older than 12 hours then
     update JWKs
   end if
   return cached JWKs
@@ -97,17 +98,14 @@ middleware JWTAuthMiddleware(url)
 end middleware
 ```
 
-## Installation
+## Usage
 
 - Assign an auth keys absolute URL here:`config/config.yaml` as a string. Under `auth`, there is a property 
-labeled `keys-endpoint`.
-
-- To integrate this package into your web application, ensure you have the necessary HTTP and JWT handling libraries installed, 
-then import and configure this package.
+labeled `keys-endpoint`. Alternatively, you could set the auth keys absolute URL in this environment variable: `AUTH_KEYS_ENDPOINT`.
 
 ## Security Notes
 
-- **TLS Configuration:** Ensure TLS verification is enabled in production environments to protect against man-in-the-middle attacks.
+- **TLS Configuration:** Ensure TLS verification is enabled in production environments.
 
-This README provides a high-level overview and integration guide for the `auth` package, emphasizing secure and efficient JWT handling in web applications. Adjust the configurations and usage examples to suit your specific application requirements and environment.
+This README provides a high-level overview for the `auth` package, emphasizing secure and efficient JWT handling.
 
