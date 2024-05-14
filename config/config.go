@@ -12,6 +12,7 @@ import (
 type config struct {
 	Db     *dbConfig
 	Server *serverConfig
+	Header string
 }
 
 type dbConfig struct {
@@ -69,6 +70,9 @@ func LoadConfig() (*config, error) {
 	if os.Getenv("FERN_DATABASE") != "" {
 		configuration.Db.Database = os.Getenv("FERN_DATABASE")
 	}
+	if os.Getenv("FERN_HEADER_NAME") != "" {
+		configuration.Header = os.Getenv("FERN_HEADER_NAME")
+	}
 
 	return configuration, nil
 }
@@ -79,4 +83,8 @@ func GetDb() *dbConfig {
 
 func GetServer() *serverConfig {
 	return configuration.Server
+}
+
+func GetHeaderName() string {
+	return configuration.Header
 }

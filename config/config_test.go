@@ -36,6 +36,7 @@ var _ = Describe("When LoadConfig is invoked", func() {
 			Expect(appConfig.Db.DetailLog).To(BeTrue())
 			Expect(appConfig.Db.MaxOpenConns).To(Equal(100))
 			Expect(appConfig.Db.MaxIdleConns).To(Equal(10))
+			Expect(appConfig.Header).To(Equal("Fern Acceptance Test Report"))
 		})
 
 		It("should get non-nil DB", func() {
@@ -63,6 +64,7 @@ var _ = Describe("When LoadConfig is invoked", func() {
 		os.Setenv("FERN_HOST", "localhost")
 		os.Setenv("FERN_PORT", "5432")
 		os.Setenv("FERN_DATABASE", "fern")
+		os.Setenv("FERN_HEADER_NAME", "Custom Fern Report Header")
 
 		//v := viper.New()
 		result, err := config.LoadConfig()
@@ -74,6 +76,7 @@ var _ = Describe("When LoadConfig is invoked", func() {
 		Expect(result.Db.Host).To(Equal("localhost"))
 		Expect(result.Db.Port).To(Equal("5432"))
 		Expect(result.Db.Database).To(Equal("fern"))
+		Expect(result.Header).To(Equal("Custom Fern Report Header"))
 	})
 
 })

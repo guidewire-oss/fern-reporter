@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"github.com/guidewire/fern-reporter/config"
 	"log"
 	"net/http"
 	"strconv"
@@ -149,7 +150,8 @@ func (h *Handler) ReportTestRunAll(c *gin.Context) {
 	var testRuns []models.TestRun
 	h.db.Preload("SuiteRuns.SpecRuns.Tags").Find(&testRuns)
 	c.HTML(http.StatusOK, "test_runs.html", gin.H{
-		"testRuns": testRuns,
+		"reportHeader": config.GetHeaderName(),
+		"testRuns":     testRuns,
 	})
 }
 
@@ -158,7 +160,8 @@ func (h *Handler) ReportTestRunById(c *gin.Context) {
 	id := c.Param("id")
 	h.db.Preload("SuiteRuns.SpecRuns").Where("id = ?", id).First(&testRun)
 	c.HTML(http.StatusOK, "test_runs.html", gin.H{
-		"testRuns": []models.TestRun{testRun},
+		"reportHeader": config.GetHeaderName(),
+		"testRuns":     []models.TestRun{testRun},
 	})
 }
 
