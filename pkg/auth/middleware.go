@@ -30,7 +30,7 @@ func customHTTPClient() *http.Client {
 	}
 }
 
-func fetchJWKs(url string) (jwk.Set, error) {
+func fetchJWKS(url string) (jwk.Set, error) {
 	ctx := context.Background()
 	client := customHTTPClient()
 
@@ -57,8 +57,8 @@ func fetchJWKs(url string) (jwk.Set, error) {
 	return jwk.Parse(data)
 }
 
-func UpdateJWKs(url string) error {
-	set, err := fetchJWKs(url)
+func UpdateJWKS(url string) error {
+	set, err := fetchJWKS(url)
 	if err != nil {
 		return err
 	}
@@ -72,13 +72,13 @@ func UpdateJWKs(url string) error {
 	return nil
 }
 
-func getJWKs(url string) (jwk.Set, error) {
+func getJWKS(url string) (jwk.Set, error) {
 	jwkMutex.RLock()
 	defer jwkMutex.RUnlock()
 
-	if time.Since(lastUpdated) > 1*time.Hour {
+	if time.Since(lastUpdated) > 12*time.Hour {
 		jwkMutex.RUnlock()
-		err := UpdateJWKs(url)
+		err := UpdateJWKS(url)
 		jwkMutex.RLock()
 		if err != nil {
 			return nil, err
@@ -89,9 +89,9 @@ func getJWKs(url string) (jwk.Set, error) {
 }
 func JWTAuthMiddleware(jwksUrl string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		set, err := getJWKs(jwksUrl)
+		set, err := getJWKS(jwksUrl)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get JWKs"})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get JWKS"})
 			return
 		}
 		authHeader := c.GetHeader("Authorization")

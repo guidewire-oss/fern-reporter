@@ -26,7 +26,7 @@ var _ = Describe("JWK Management", func() {
 		server.Close()
 	})
 
-	Describe("UpdateJWKs", func() {
+	Describe("UpdateJWKS", func() {
 		Context("when fetching JWKs is successful", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
@@ -49,7 +49,7 @@ var _ = Describe("JWK Management", func() {
 			})
 
 			It("should update jwkSet and lastUpdated", func() {
-				err := auth.UpdateJWKs(url)
+				err := auth.UpdateJWKS(url)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -65,7 +65,7 @@ var _ = Describe("JWK Management", func() {
 			})
 
 			It("should return an error and not update jwkSet", func() {
-				err := auth.UpdateJWKs(url)
+				err := auth.UpdateJWKS(url)
 				Expect(err).To(HaveOccurred())
 			})
 		})
