@@ -13,3 +13,11 @@ type JWK struct {
 	Alg string `json:"alg"`
 	K   string `json:"k,omitempty"`
 }
+
+type Claims struct {
+	Scopes map[string]string
+}
+
+type Scopes struct {
+	Scopes map[string]int
+}

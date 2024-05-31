@@ -3,12 +3,11 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"github.com/guidewire/fern-reporter/pkg/models"
 	"github.com/guidewire/fern-reporter/config"
 	"log"
 	"net/http"
 	"strconv"
-
-	"github.com/guidewire/fern-reporter/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

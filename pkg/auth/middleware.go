@@ -116,3 +116,81 @@ func JWTAuthMiddleware(jwksUrl string) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func PermissionMiddleware() gin.HandlerFunc {
+	var permissions = map[string]string{
+		"GET":    "read",
+		"POST":   "write",
+		"PUT":    "write",
+		"UPDATE": "write",
+		"DELETE": "write",
+	}
+
+	return func(c *gin.Context) {
+		scopes := getScopes(c)
+		if scopes == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "unable to retrieve scopes",
+			})
+			return
+		}
+
+		pathAppID := c.Param("appID")
+		method := c.Request.Method
+
+		requiredPermission, ok := permissions[method]
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": "invalid method",
+			})
+			return
+		}
+
+		requiredScope := pathAppID + "." + requiredPermission
+
+		if !strings.Contains(scopes, requiredScope) {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": "insufficient permissions",
+			})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func getScopes(c *gin.Context) string {
+	validateToken, ok := c.Get("validatedToken")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "token not found in context",
+		})
+		return ""
+	}
+
+	token, ok := validateToken.(jwt.Token)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "invalid token type",
+		})
+		return ""
+	}
+
+	claims := token.PrivateClaims()
+	if len(claims) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "token claims are invalid or empty",
+		})
+		return ""
+	}
+
+	fernScopes, ok := claims["fern_scopes"].(string)
+	if !ok || len(fernScopes) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "fern_scopes is missing or empty",
+		})
+		return ""
+	}
+
+	return fernScopes
+}

@@ -106,6 +106,3 @@ labeled `keys-endpoint`. Alternatively, you could set the auth keys absolute URL
 ## Security Notes
 
 - **TLS Configuration:** Ensure TLS verification is enabled in production environments.
-
-This README provides a high-level overview for the `auth` package, emphasizing secure and efficient JWT handling.
-

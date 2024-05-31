@@ -3,6 +3,7 @@ package auth_test
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/guidewire/fern-reporter/pkg/auth"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
@@ -123,4 +124,57 @@ var _ = Describe("JWK Management", func() {
 		})
 	})
 
+	Describe("PermissionMiddleware", func() {
+		var router *gin.Engine
+		var server *ghttp.Server
+
+		ginkgo.BeforeEach(func() {
+			gin.SetMode(gin.TestMode)
+			router = gin.New()
+			server = ghttp.NewServer()
+		})
+
+		ginkgo.AfterEach(func() {
+			server.Close()
+		})
+
+		ginkgo.Context("when scopes are not present", func() {
+			ginkgo.It("should return 401 Unauthorized", func() {
+				router.Use(auth.PermissionMiddleware())
+				router.GET("/apps/:appID/resource", func(c *gin.Context) {
+					c.Status(http.StatusOK)
+				})
+
+				req, _ := http.NewRequest("GET", "/apps/app1/resource", nil)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusUnauthorized))
+				Expect(w.Body.String()).To(ContainSubstring("unable to retrieve scopes"))
+			})
+		})
+
+		//ginkgo.Context("when invalid method is used", func() {
+		//	ginkgo.It("should return 403 Forbidden", func() {
+		//		router.Use(func(c *gin.Context) {
+		//			c.Set("validatedToken", jwt.Token{
+		//				Claims: jwt.MapClaims{
+		//					"fern_scopes": "app1.read",
+		//				},
+		//			})
+		//			c.Next()
+		//		}, auth.PermissionMiddleware())
+		//		router.PATCH("/apps/:appID/resource", func(c *gin.Context) {
+		//			c.Status(http.StatusOK)
+		//		})
+		//
+		//		req, _ := http.NewRequest("PATCH", "/apps/app1/resource", nil)
+		//		w := httptest.NewRecorder()
+		//		router.ServeHTTP(w, req)
+		//
+		//		Expect(w.Code).To(Equal(http.StatusForbidden))
+		//		Expect(w.Body.String()).To(ContainSubstring("invalid method"))
+		//	})
+		//})
+	})
 })

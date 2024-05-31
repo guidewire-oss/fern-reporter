@@ -2,6 +2,7 @@ package routers
 
 import (
 	"github.com/guidewire/fern-reporter/pkg/api/handlers"
+	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ func RegisterRouters(router *gin.Engine) {
 	handler := handlers.NewHandler(db.GetDb())
 
 	api := router.Group("/api")
+	api.Use(auth.PermissionMiddleware())
 	{
 		testRun := api.Group("/testrun/")
 		testRun.GET("/", handler.GetTestRunAll)
@@ -21,11 +23,13 @@ func RegisterRouters(router *gin.Engine) {
 		testRun.DELETE("/:id", handler.DeleteTestRun)
 	}
 	reports := router.Group("/reports/testruns")
+	reports.Use(auth.PermissionMiddleware())
 	{
 		testRunReport := reports.GET("/", handler.ReportTestRunAll)
 		testRunReport.GET("/:id", handler.ReportTestRunById)
 	}
 	ping := router.Group("/ping")
+	ping.Use(auth.PermissionMiddleware())
 	{
 		ping.GET("/", handler.Ping)
 	}
