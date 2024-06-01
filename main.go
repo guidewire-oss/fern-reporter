@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"html/template"
 	"log"
 
@@ -40,11 +43,19 @@ func initServer() {
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
 
+	ctx := context.Background()
 	authConfig := config.GetAuth()
-	if err := auth.UpdateJWKS(authConfig.KeysEndpoint); err != nil {
-		log.Fatalf("error getting JWKs: %v", err)
+	jwksCache := jwk.NewCache(ctx)
+	err := jwksCache.Register(authConfig.KeysEndpoint, jwk.WithMinRefreshInterval(12*time.Hour))
+	if err != nil {
+		log.Fatalf("Failed to register JWKS URL: %v", err)
 	}
-	router.Use(auth.JWTAuthMiddleware(authConfig.KeysEndpoint))
+	if _, err := jwksCache.Refresh(ctx, authConfig.KeysEndpoint); err != nil {
+		log.Fatalf("URL is not a valid JWKS: %v", err)
+	}
+	fmt.Println("JWKS cache initialized and refreshed")
+
+	router.Use(auth.JWTMiddleware(authConfig.KeysEndpoint, *jwksCache))
 	router.Use(cors.New(cors.Config{
 		AllowMethods:     []string{"GET", "POST"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "ACCESS_TOKEN"},

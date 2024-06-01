@@ -13,7 +13,7 @@ func RegisterRouters(router *gin.Engine) {
 	handler := handlers.NewHandler(db.GetDb())
 
 	api := router.Group("/api")
-	api.Use(auth.PermissionMiddleware())
+	api.Use(auth.ScopeMiddleware())
 	{
 		testRun := api.Group("/testrun/")
 		testRun.GET("/", handler.GetTestRunAll)
@@ -23,13 +23,13 @@ func RegisterRouters(router *gin.Engine) {
 		testRun.DELETE("/:id", handler.DeleteTestRun)
 	}
 	reports := router.Group("/reports/testruns")
-	reports.Use(auth.PermissionMiddleware())
+	reports.Use(auth.ScopeMiddleware())
 	{
 		testRunReport := reports.GET("/", handler.ReportTestRunAll)
 		testRunReport.GET("/:id", handler.ReportTestRunById)
 	}
 	ping := router.Group("/ping")
-	ping.Use(auth.PermissionMiddleware())
+	ping.Use(auth.ScopeMiddleware())
 	{
 		ping.GET("/", handler.Ping)
 	}

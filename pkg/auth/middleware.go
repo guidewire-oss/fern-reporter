@@ -2,123 +2,69 @@ package auth
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"io"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
 )
 
-var (
-	jwkSet      jwk.Set
-	lastUpdated time.Time
-	jwkMutex    sync.RWMutex
-)
-
-func customHTTPClient() *http.Client {
-	//FIXME: Fix this client, so that it uses TLS!!!!
-	return &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-		Timeout: 30 * time.Second,
-	}
+// Fetches the JWK set from the given URL using the provided context and cache.
+func getKeys(ctx context.Context, jwksUrl string, jwksCache jwk.Cache) (jwk.Set, error) {
+	return jwksCache.Get(ctx, jwksUrl)
 }
 
-func fetchJWKS(url string) (jwk.Set, error) {
-	ctx := context.Background()
-	client := customHTTPClient()
+// Parses and validates the JWT token from the Authorization header.
+func parseAndValidateToken(c *gin.Context, set jwk.Set) (jwt.Token, error) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return nil, fmt.Errorf("authorization header missing")
+	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	authHeaderParts := strings.SplitN(authHeader, " ", 2)
+	if len(authHeaderParts) != 2 || authHeaderParts[0] != "Bearer" {
+		return nil, fmt.Errorf("authorization header format must be Bearer {token}")
+	}
+
+	token, err := jwt.Parse([]byte(authHeaderParts[1]), jwt.WithKeySet(set))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid token")
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch JWKs, server returned: %d %s", resp.StatusCode, resp.Status)
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return jwk.Parse(data)
+	return token, nil
 }
 
-func UpdateJWKS(url string) error {
-	set, err := fetchJWKS(url)
-	if err != nil {
-		return err
-	}
-
-	jwkMutex.Lock()
-	defer jwkMutex.Unlock()
-
-	jwkSet = set
-	lastUpdated = time.Now()
-
-	return nil
-}
-
-func getJWKS(url string) (jwk.Set, error) {
-	jwkMutex.RLock()
-	defer jwkMutex.RUnlock()
-
-	if time.Since(lastUpdated) > 12*time.Hour {
-		jwkMutex.RUnlock()
-		err := UpdateJWKS(url)
-		jwkMutex.RLock()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return jwkSet, nil
-}
-func JWTAuthMiddleware(jwksUrl string) gin.HandlerFunc {
+// JWTMiddleware Middleware for handling JWT authentication.
+func JWTMiddleware(jwksUrl string, jwksCache jwk.Cache) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		set, err := getJWKS(jwksUrl)
+		ctx := c.Request.Context()
+		set, err := getKeys(ctx, jwksUrl, jwksCache)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get JWKS"})
 			return
 		}
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header missing"})
-			return
-		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header format must be Bearer {token}"})
-			return
-		}
-
-		token, err := jwt.Parse([]byte(parts[1]), jwt.WithKeySet(set))
+		token, err := parseAndValidateToken(c, set)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.Set("validatedToken", token)
+		fernScope, ok := token.PrivateClaims()["fern_scope"].(string)
+		if !ok || len(fernScope) == 0 {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "fern scope claim is missing or empty"})
+			return
+		}
+
+		c.Set("fernScope", fernScope)
 		c.Next()
 	}
 }
 
-func PermissionMiddleware() gin.HandlerFunc {
-	var permissions = map[string]string{
+// ScopeMiddleware Middleware for checking if the user has the necessary scope for the request.
+func ScopeMiddleware() gin.HandlerFunc {
+	permissions := map[string]string{
 		"GET":    "read",
 		"POST":   "write",
 		"PUT":    "write",
@@ -127,70 +73,27 @@ func PermissionMiddleware() gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		scopes := getScopes(c)
-		if scopes == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "unable to retrieve scopes",
-			})
+		scopes, ok := c.Get("fernScope")
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to retrieve scopes"})
 			return
 		}
 
 		pathAppID := c.Param("appID")
-		method := c.Request.Method
+		requestMethod := c.Request.Method
 
-		requiredPermission, ok := permissions[method]
+		requiredPermission, ok := permissions[requestMethod]
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "invalid method",
-			})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid method"})
 			return
 		}
 
 		requiredScope := pathAppID + "." + requiredPermission
 
-		if !strings.Contains(scopes, requiredScope) {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "insufficient permissions",
-			})
+		if !strings.Contains(scopes.(string), requiredScope) {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient scope"})
 			return
 		}
-
 		c.Next()
 	}
-}
-
-func getScopes(c *gin.Context) string {
-	validateToken, ok := c.Get("validatedToken")
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "token not found in context",
-		})
-		return ""
-	}
-
-	token, ok := validateToken.(jwt.Token)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "invalid token type",
-		})
-		return ""
-	}
-
-	claims := token.PrivateClaims()
-	if len(claims) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "token claims are invalid or empty",
-		})
-		return ""
-	}
-
-	fernScopes, ok := claims["fern_scopes"].(string)
-	if !ok || len(fernScopes) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "fern_scopes is missing or empty",
-		})
-		return ""
-	}
-
-	return fernScopes
 }
