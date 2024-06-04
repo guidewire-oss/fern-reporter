@@ -9,6 +9,10 @@ ARG TARGETARCH
 ENV GO111MODULE=on \
     CGO_ENABLED=0
 
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set the working directory inside the container
 WORKDIR /app
 
