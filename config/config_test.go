@@ -26,7 +26,7 @@ var _ = Describe("When LoadConfig is invoked", func() {
 			appConfig, err := config.LoadConfig()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(appConfig.Auth.KeysEndpoint).To(Equal(""))
+			Expect(appConfig.Auth.JSONWebKeysEndpoint).To(Equal(""))
 			Expect(appConfig.Server.Port).To(Equal(":8080"))
 			Expect(appConfig.Db.Driver).To(Equal("postgres"))
 			Expect(appConfig.Db.Host).To(Equal("localhost"))
@@ -60,7 +60,7 @@ var _ = Describe("When LoadConfig is invoked", func() {
 
 	It("should override configuration with environment variables", func() {
 
-		os.Setenv("AUTH_KEYS_ENDPOINT", "https://test-idp-base-url.com/oauth2/abc123/v1/keys")
+		os.Setenv("AUTH_JSON_WEB_KEYS_ENDPOINT", "https://test-idp-base-url.com/oauth2/abc123/v1/keys")
 		os.Setenv("AUTH_TOKEN_ENDPOINT", "https://test-idp-base-url.com/oauth2/abc123/v1/token")
 		os.Setenv("FERN_USERNAME", "fern")
 		os.Setenv("FERN_PASSWORD", "fern")
@@ -79,7 +79,7 @@ var _ = Describe("When LoadConfig is invoked", func() {
 		Expect(result.Db.Host).To(Equal("localhost"))
 		Expect(result.Db.Port).To(Equal("5432"))
 		Expect(result.Db.Database).To(Equal("fern"))
-		Expect(result.Auth.KeysEndpoint).To(Equal("https://test-idp-base-url.com/oauth2/abc123/v1/keys"))
+		Expect(result.Auth.JSONWebKeysEndpoint).To(Equal("https://test-idp-base-url.com/oauth2/abc123/v1/keys"))
 		Expect(result.Auth.TokenEndpoint).To(Equal("https://test-idp-base-url.com/oauth2/abc123/v1/token"))
 		Expect(result.Header).To(Equal("Custom Fern Report Header"))
 		Expect(result.Header).To(Equal("Custom Fern Report Header"))

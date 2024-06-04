@@ -33,8 +33,8 @@ type serverConfig struct {
 }
 
 type authConfig struct {
-	KeysEndpoint  string `mapstructure:"keys-endpoint"`
-	TokenEndpoint string `mapstructure:"token-endpoint"`
+	JSONWebKeysEndpoint string `mapstructure:"json-web-keys-endpoint"`
+	TokenEndpoint       string `mapstructure:"token-endpoint"`
 }
 
 var configuration *config
@@ -76,8 +76,8 @@ func LoadConfig() (*config, error) {
 	if os.Getenv("FERN_DATABASE") != "" {
 		configuration.Db.Database = os.Getenv("FERN_DATABASE")
 	}
-	if os.Getenv("AUTH_KEYS_ENDPOINT") != "" {
-		configuration.Auth.KeysEndpoint = os.Getenv("AUTH_KEYS_ENDPOINT")
+	if os.Getenv("AUTH_JSON_WEB_KEYS_ENDPOINT") != "" {
+		configuration.Auth.JSONWebKeysEndpoint = os.Getenv("AUTH_JSON_WEB_KEYS_ENDPOINT")
 	}
 	if os.Getenv("AUTH_TOKEN_ENDPOINT") != "" {
 		configuration.Auth.TokenEndpoint = os.Getenv("AUTH_TOKEN_ENDPOINT")

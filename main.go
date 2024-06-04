@@ -46,16 +46,16 @@ func initServer() {
 	ctx := context.Background()
 	authConfig := config.GetAuth()
 	jwksCache := jwk.NewCache(ctx)
-	err := jwksCache.Register(authConfig.KeysEndpoint, jwk.WithMinRefreshInterval(12*time.Hour))
+	err := jwksCache.Register(authConfig.JSONWebKeysEndpoint, jwk.WithMinRefreshInterval(12*time.Hour))
 	if err != nil {
 		log.Fatalf("Failed to register JWKS URL: %v", err)
 	}
-	if _, err := jwksCache.Refresh(ctx, authConfig.KeysEndpoint); err != nil {
+	if _, err := jwksCache.Refresh(ctx, authConfig.JSONWebKeysEndpoint); err != nil {
 		log.Fatalf("URL is not a valid JWKS: %v", err)
 	}
 	fmt.Println("JWKS cache initialized and refreshed")
 
-	router.Use(auth.JWTMiddleware(authConfig.KeysEndpoint, *jwksCache))
+	router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, *jwksCache))
 	router.Use(cors.New(cors.Config{
 		AllowMethods:     []string{"GET", "POST"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "ACCESS_TOKEN"},
