@@ -34,7 +34,7 @@ cross-compile:
 # Testing
 test:
 	@echo "🧪 Running Tests..."
-	@go test -r $(TEST_FLAGS) -coverprofile=profile.cov ./...
+	@go test $(TEST_FLAGS) -coverprofile=profile.cov ./...
 
 docker-build: cross-compile
 	@echo "🐳 Building Local Docker image..."

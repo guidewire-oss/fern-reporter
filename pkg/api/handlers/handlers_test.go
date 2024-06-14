@@ -99,6 +99,7 @@ var _ = Describe("Handlers", func() {
 			if err := json.NewDecoder(w.Body).Decode(&testRun); err != nil {
 				Fail(err.Error())
 			}
+
 			Expect(int(testRun.ID)).To(Equal(123))
 			Expect(testRun.TestProjectName).To(Equal("project 123"))
 		})
@@ -826,8 +827,10 @@ var _ = Describe("Handlers", func() {
 
 			//mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT $2`)).
-				WithArgs("1", 1).WillReturnRows(mock.NewRows([]string{"id", "test_project_name", "test_seed"}).
-				AddRow(expectedTestRun.ID, expectedTestRun.TestProjectName, expectedTestRun.TestSeed))
+				WithArgs("1", 1).
+				WillReturnRows(mock.NewRows([]string{"id", "test_project_name", "test_seed"}).
+					AddRow(expectedTestRun.ID, expectedTestRun.TestProjectName, expectedTestRun.TestSeed))
+
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
