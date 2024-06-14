@@ -13,6 +13,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"net/http/httptest"
+	"regexp"
 )
 
 var (
@@ -84,6 +85,79 @@ var _ = Describe("Handlers", func() {
 			Expect(resp.TestRuns[0].ID).To(Equal(1))
 			Expect(resp.TestRuns[0].TestProjectName).To(Equal("project 1"))
 			Expect(resp.TestRuns[0].TestSeed).To(BeZero())
+		})
+	})
+
+	Context("test testRun resolver", func() {
+		It("should query db to fetch test run record", func() {
+			testRunRows := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
+				AddRow(1, "project 1", "1")
+
+			suiteRows := sqlmock.NewRows([]string{"ID", "TestRunID", "SuiteName"}).
+				AddRow(1, 1, "suite 1")
+
+			specRows := sqlmock.NewRows([]string{"ID", "SuiteID", "SpecDescription"}).
+				AddRow(1, 1, "spec 1")
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 AND test_project_name = $2`)).
+				WithArgs(1, "project 1").
+				WillReturnRows(testRunRows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(suiteRows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(specRows)
+
+			queryResolver := &resolvers.Resolver{DB: gormDb}
+
+			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			srv := httptest.NewServer(gqlHandler)
+			defer srv.Close()
+
+			cli := client.New(gqlHandler)
+
+			query := `
+			 query {
+			  testRun(testRunFilter: { id: 1, testProjectName:"project 1" }) {
+				id
+				testProjectName
+				testSeed
+				suiteRuns {
+					id
+					testRunId
+					suiteName
+				}
+			  }
+			}`
+			// Response struct
+			var resp struct {
+				TestRun []struct {
+					ID              int
+					TestProjectName string
+					TestSeed        int
+					SuiteRuns       []struct {
+						ID        int
+						TestRunID int
+						SuiteName string
+						StartTime string
+						EndTime   string
+					}
+				}
+			}
+
+			err := cli.Post(query, &resp)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(resp.TestRun[0].ID).To(Equal(1))
+			Expect(resp.TestRun[0].TestProjectName).To(Equal("project 1"))
+			Expect(resp.TestRun[0].TestSeed).To(Equal(1))
+			Expect(len(resp.TestRun[0].SuiteRuns)).To(Equal(1))
+			Expect(resp.TestRun[0].SuiteRuns[0].ID).To(Equal(1))
+			Expect(resp.TestRun[0].SuiteRuns[0].TestRunID).To(Equal(1))
+			Expect(resp.TestRun[0].SuiteRuns[0].SuiteName).To(Equal("suite 1"))
 		})
 	})
 
