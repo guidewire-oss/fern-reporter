@@ -2,62 +2,77 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"net/http"
+	"os"
 	"strings"
 )
 
-// Fetches the JWK set from the given URL using the provided context and cache.
-func getKeys(ctx context.Context, jwksUrl string, jwksCache jwk.Cache) (jwk.Set, error) {
-	return jwksCache.Get(ctx, jwksUrl)
+type KeyFetcher interface {
+	FetchKeys(ctx context.Context, jwksUrl string) (jwk.Set, error)
 }
 
-// Parses and validates the JWT token from the Authorization header.
-func parseAndValidateToken(c *gin.Context, set jwk.Set) (jwt.Token, error) {
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		return nil, fmt.Errorf("authorization header missing")
-	}
+type JWTValidator interface {
+	ParseAndValidateToken(ctx context.Context, tokenString string, set jwk.Set) (jwt.Token, error)
+}
 
-	authHeaderParts := strings.SplitN(authHeader, " ", 2)
-	if len(authHeaderParts) != 2 || authHeaderParts[0] != "Bearer" {
-		return nil, fmt.Errorf("authorization header format must be Bearer {token}")
-	}
+type DefaultKeyFetcher struct{}
 
-	token, err := jwt.Parse([]byte(authHeaderParts[1]), jwt.WithKeySet(set))
-	if err != nil {
-		return nil, fmt.Errorf("invalid token")
-	}
+func (f *DefaultKeyFetcher) FetchKeys(ctx context.Context, jwksUrl string) (jwk.Set, error) {
+	return jwk.Fetch(ctx, jwksUrl)
+}
 
-	return token, nil
+type DefaultJWTValidator struct{}
+
+func (v *DefaultJWTValidator) ParseAndValidateToken(ctx context.Context, tokenString string, set jwk.Set) (jwt.Token, error) {
+	return jwt.Parse([]byte(tokenString), jwt.WithKeySet(set))
 }
 
 // JWTMiddleware Middleware for handling JWT authentication.
-func JWTMiddleware(jwksUrl string, jwksCache jwk.Cache) gin.HandlerFunc {
+func JWTMiddleware(jwksUrl string, fetcher KeyFetcher, validator JWTValidator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		set, err := getKeys(ctx, jwksUrl, jwksCache)
+		set, err := fetcher.FetchKeys(ctx, jwksUrl)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get JWKS"})
 			return
 		}
 
-		token, err := parseAndValidateToken(c, set)
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header missing"})
+			return
+		}
+
+		authHeaderParts := strings.SplitN(authHeader, " ", 2)
+		if len(authHeaderParts) != 2 || authHeaderParts[0] != "Bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header format must be Bearer {token}"})
+			return
+		}
+
+		token, err := validator.ParseAndValidateToken(ctx, authHeaderParts[1], set)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
 		}
 
-		fernScope, ok := token.PrivateClaims()["fern_scope"].(string)
-		if !ok || len(fernScope) == 0 {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "fern scope claim is missing or empty"})
+		scopeClaimName := os.Getenv("SCOPE_CLAIM_NAME")
+		if scopeClaimName == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"error": "SCOPE_CLAIM_NAME environment variable is empty",
+			})
 			return
 		}
 
-		c.Set("fernScope", fernScope)
+		scope, ok := token.PrivateClaims()[scopeClaimName].(string)
+		if !ok || len(scope) == 0 {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "scope claim is missing or empty"})
+			return
+		}
+
+		c.Set("scope", scope)
 		c.Next()
 	}
 }
@@ -65,32 +80,23 @@ func JWTMiddleware(jwksUrl string, jwksCache jwk.Cache) gin.HandlerFunc {
 // ScopeMiddleware Middleware for checking if the user has the necessary scope for the request.
 func ScopeMiddleware() gin.HandlerFunc {
 	permissions := map[string]string{
-		"GET":    "read",
-		"POST":   "write",
-		"PUT":    "write",
-		"UPDATE": "write",
-		"DELETE": "write",
+		"POST": "fern.write",
 	}
 
 	return func(c *gin.Context) {
-		scopes, ok := c.Get("fernScope")
+		scopes, ok := c.Get("scope")
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to retrieve scopes"})
 			return
 		}
 
-		pathAppID := c.Param("appID")
-		requestMethod := c.Request.Method
-
-		requiredPermission, ok := permissions[requestMethod]
+		requiredPermission, ok := permissions[c.Request.Method]
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid method"})
 			return
 		}
 
-		requiredScope := pathAppID + "." + requiredPermission
-
-		if !strings.Contains(scopes.(string), requiredScope) {
+		if !strings.Contains(scopes.(string), requiredPermission) {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient scope"})
 			return
 		}

@@ -1,132 +1,204 @@
 package auth_test
 
 import (
-	"context"
+	"fmt"
+	"github.com/guidewire/fern-reporter/pkg/auth"
+	"github.com/guidewire/fern-reporter/pkg/auth/mocks"
 	"net/http"
 	"net/http/httptest"
-	"time"
-
-	"github.com/guidewire/fern-reporter/pkg/auth"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 )
 
-var _ = ginkgo.Describe("Auth Middleware", func() {
+var _ = Describe("JWTMiddleware", func() {
 	var (
-		jwksCache *jwk.Cache
-		jwksUrl   string
-		recorder  *httptest.ResponseRecorder
-		router    *gin.Engine
+		mockFetcher   *mocks.KeyFetcher
+		mockValidator *mocks.JWTValidator
+		router        *gin.Engine
+		recorder      *httptest.ResponseRecorder
 	)
 
-	// Create a mock JWKS response
-	mockJWKSResponse := `{
-		"keys": [
-			{
-				"kty": "RSA",
-				"kid": "fake-key-id",
-				"use": "sig",
-				"n": "fake-modulus",
-				"e": "AQAB"
-			}
-		]
-	}`
-
-	ginkgo.BeforeEach(func() {
-		// Create a mock HTTP server
-		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(mockJWKSResponse))
-		}))
-		jwksUrl = mockServer.URL
-
-		// Initialize JWKS cache with the mock server URL
-		ctx := context.Background()
-		jwksCache = jwk.NewCache(ctx)
-		err := jwksCache.Register(jwksUrl, jwk.WithMinRefreshInterval(12*time.Hour))
-		gomega.Expect(err).ToNot(gomega.HaveOccurred())
-
-		// Set up Gin router
+	BeforeEach(func() {
 		gin.SetMode(gin.TestMode)
+		mockFetcher = new(mocks.KeyFetcher)
+		mockValidator = new(mocks.JWTValidator)
 		router = gin.New()
+		recorder = httptest.NewRecorder()
 	})
 
-	ginkgo.Context("JWTMiddleware", func() {
-		ginkgo.BeforeEach(func() {
-			router.Use(auth.JWTMiddleware(jwksUrl, *jwksCache))
-			router.GET("/protected", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{"message": "success"})
-			})
-		})
+	It("should abort with 500 if key fetcher fails", func() {
+		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(nil, fmt.Errorf("error"))
+		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
 
-		ginkgo.It("should return 401 if Authorization header is missing", func() {
-			req, _ := http.NewRequest(http.MethodGet, "/protected", nil)
-			recorder = httptest.NewRecorder()
-			router.ServeHTTP(recorder, req)
-			gomega.Expect(recorder.Code).To(gomega.Equal(http.StatusUnauthorized))
-		})
+		req, _ := http.NewRequest("GET", "/", nil)
+		router.ServeHTTP(recorder, req)
 
-		ginkgo.It("should return 401 if token is invalid", func() {
-			req, _ := http.NewRequest(http.MethodGet, "/protected", nil)
-			req.Header.Set("Authorization", "Bearer invalid.token")
-			recorder = httptest.NewRecorder()
-			router.ServeHTTP(recorder, req)
-			gomega.Expect(recorder.Code).To(gomega.Equal(http.StatusUnauthorized))
-		})
-
-		/*ginkgo.FIt("should return 200 if token is valid", func() {
-			// Generate a valid token
-			token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-				"exp":        time.Now().Add(time.Hour).Unix(),
-				"iat":        time.Now().Unix(),
-				"iss":        "test",
-				"fern_scope": "appID.read",
-			})
-
-			pk, err := rsa.GenerateKey(rand.Reader, 2048)
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			token.Header["kid"] = "fake-key-id"
-			tokenString, err := token.SignedString(pk)
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-
-			// Create a request with the valid token
-			req, _ := http.NewRequest(http.MethodGet, "/protected", nil)
-			req.Header.Set("Authorization", "Bearer "+tokenString)
-			recorder = httptest.NewRecorder()
-			router.ServeHTTP(recorder, req)
-			gomega.Expect(recorder.Code).To(gomega.Equal(http.StatusOK))
-			gomega.Expect(recorder.Body.String()).To(gomega.ContainSubstring("success"))
-		})*/
+		Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
 	})
 
-	ginkgo.Context("ScopeMiddleware", func() {
-		ginkgo.BeforeEach(func() {
-			router.Use(func(c *gin.Context) {
-				c.Set("fernScope", "appID.read")
-			})
-			router.Use(auth.ScopeMiddleware())
-			router.GET("/app/:appID", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{"message": "success"})
-			})
+	It("should abort with 401 if authorization header is missing", func() {
+		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwk.NewSet(), nil)
+		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
+
+		req, _ := http.NewRequest("GET", "/", nil)
+		router.ServeHTTP(recorder, req)
+
+		Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+	})
+
+	It("should abort with 401 if token is invalid", func() {
+		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwk.NewSet(), nil)
+		mockValidator.On("ParseAndValidateToken", mock.Anything, "invalid_token", mock.Anything).Return(nil, fmt.Errorf("invalid token"))
+		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
+
+		req, _ := http.NewRequest("GET", "/", nil)
+		req.Header.Set("Authorization", "Bearer invalid_token")
+		router.ServeHTTP(recorder, req)
+
+		Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+	})
+
+	It("should set scope and call next handler if token is valid", func() {
+		os.Setenv("SCOPE_CLAIM_NAME", "scope")
+		defer os.Unsetenv("SCOPE_CLAIM_NAME")
+
+		jwkSet := jwk.NewSet()
+		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwkSet, nil)
+
+		mockToken := jwt.New()
+		mockToken.Set("scope", "fern.write")
+		mockValidator.On("ParseAndValidateToken", mock.Anything, "valid_token", jwkSet).Return(mockToken, nil)
+
+		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
+		router.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "success"})
 		})
 
-		ginkgo.It("should return 403 if scope is insufficient", func() {
-			req, _ := http.NewRequest(http.MethodGet, "/app/anotherAppID", nil)
-			recorder = httptest.NewRecorder()
-			router.ServeHTTP(recorder, req)
-			gomega.Expect(recorder.Code).To(gomega.Equal(http.StatusForbidden))
+		req, _ := http.NewRequest("GET", "/", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		router.ServeHTTP(recorder, req)
+
+		Expect(recorder.Code).To(Equal(http.StatusOK))
+		Expect(recorder.Body.String()).To(ContainSubstring("success"))
+	})
+
+	It("should abort with 400 if SCOPE_CLAIM_NAME is not set", func() {
+		os.Unsetenv("SCOPE_CLAIM_NAME")
+
+		jwkSet := jwk.NewSet()
+		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwkSet, nil)
+
+		mockToken := jwt.New()
+		mockToken.Set("scope", "fern.write")
+		mockValidator.On("ParseAndValidateToken", mock.Anything, "valid_token", jwkSet).Return(mockToken, nil)
+
+		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
+		router.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "success"})
 		})
 
-		ginkgo.It("should allow access if scope is sufficient", func() {
-			req, _ := http.NewRequest(http.MethodGet, "/app/appID", nil)
-			recorder = httptest.NewRecorder()
-			router.ServeHTTP(recorder, req)
-			gomega.Expect(recorder.Code).To(gomega.Equal(http.StatusOK))
+		req, _ := http.NewRequest("GET", "/", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		router.ServeHTTP(recorder, req)
+
+		Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+	})
+
+	It("should abort with 400 if scope claim is missing or empty", func() {
+		os.Setenv("SCOPE_CLAIM_NAME", "scope")
+		defer os.Unsetenv("SCOPE_CLAIM_NAME")
+
+		jwkSet := jwk.NewSet()
+		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwkSet, nil)
+
+		mockToken := jwt.New()
+		mockValidator.On("ParseAndValidateToken", mock.Anything, "valid_token", jwkSet).Return(mockToken, nil)
+
+		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
+		router.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "success"})
 		})
 
+		req, _ := http.NewRequest("GET", "/", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		router.ServeHTTP(recorder, req)
+
+		Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+	})
+})
+
+var _ = Describe("ScopeMiddleware", func() {
+	var (
+		router   *gin.Engine
+		recorder *httptest.ResponseRecorder
+	)
+
+	BeforeEach(func() {
+		router = gin.New()
+		recorder = httptest.NewRecorder()
+	})
+
+	It("should abort with 401 if scope is not set in context", func() {
+		router.Use(auth.ScopeMiddleware())
+		router.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "success"})
+		})
+
+		req, _ := http.NewRequest("GET", "/", nil)
+		router.ServeHTTP(recorder, req)
+
+		Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+	})
+
+	It("should abort with 403 if method is not in permissions map", func() {
+		router.Use(func(c *gin.Context) {
+			c.Set("scope", "fern.write")
+		})
+		router.Use(auth.ScopeMiddleware())
+		router.DELETE("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "success"})
+		})
+
+		req, _ := http.NewRequest("DELETE", "/", nil)
+		router.ServeHTTP(recorder, req)
+
+		Expect(recorder.Code).To(Equal(http.StatusForbidden))
+	})
+
+	It("should abort with 403 if scope does not include required permission", func() {
+		router.Use(func(c *gin.Context) {
+			c.Set("scope", "fern.read")
+		})
+		router.Use(auth.ScopeMiddleware())
+		router.POST("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "success"})
+		})
+
+		req, _ := http.NewRequest("POST", "/", nil)
+		router.ServeHTTP(recorder, req)
+
+		Expect(recorder.Code).To(Equal(http.StatusForbidden))
+	})
+
+	It("should call next handler if scope includes required permission", func() {
+		router.Use(func(c *gin.Context) {
+			c.Set("scope", "fern.write")
+		})
+		router.Use(auth.ScopeMiddleware())
+		router.POST("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "success"})
+		})
+
+		req, _ := http.NewRequest("POST", "/", nil)
+		router.ServeHTTP(recorder, req)
+
+		Expect(recorder.Code).To(Equal(http.StatusOK))
+		Expect(recorder.Body.String()).To(ContainSubstring("success"))
 	})
 })
