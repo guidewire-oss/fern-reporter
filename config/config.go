@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/viper"
 )
@@ -35,6 +36,8 @@ type serverConfig struct {
 type authConfig struct {
 	JSONWebKeysEndpoint string `mapstructure:"json-web-keys-endpoint"`
 	TokenEndpoint       string `mapstructure:"token-endpoint"`
+	Enabled             bool   `mapstructure:"enabled"`
+	ScopeClaimName      string `mapstructure:"scope-claim-name"`
 }
 
 var configuration *config
@@ -81,6 +84,12 @@ func LoadConfig() (*config, error) {
 	}
 	if os.Getenv("AUTH_TOKEN_ENDPOINT") != "" {
 		configuration.Auth.TokenEndpoint = os.Getenv("AUTH_TOKEN_ENDPOINT")
+	}
+	if os.Getenv("AUTH_ENABLED") != "" {
+		configuration.Auth.Enabled, _ = strconv.ParseBool(os.Getenv("AUTH_ENABLED"))
+	}
+	if os.Getenv("SCOPE_CLAIM_NAME") != "" {
+		configuration.Auth.ScopeClaimName = os.Getenv("SCOPE_CLAIM_NAME")
 	}
 	if os.Getenv("FERN_HEADER_NAME") != "" {
 		configuration.Header = os.Getenv("FERN_HEADER_NAME")

@@ -13,5 +13,7 @@ server:
 auth:
   json-web-keys-endpoint: ""
   token-endpoint: ""
+  enabled: "true"
+  scope-claim-name: ""
 
 header: "Fern Acceptance Test Report"
