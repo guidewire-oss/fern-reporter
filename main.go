@@ -43,19 +43,8 @@ func initServer() {
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
 
-	ctx := context.Background()
-	authConfig := config.GetAuth()
-	jwksCache := jwk.NewCache(ctx)
-	err := jwksCache.Register(authConfig.JSONWebKeysEndpoint, jwk.WithMinRefreshInterval(12*time.Hour))
-	if err != nil {
-		log.Fatalf("Failed to register JWKS URL: %v", err)
-	}
-	if _, err := jwksCache.Refresh(ctx, authConfig.JSONWebKeysEndpoint); err != nil {
-		log.Fatalf("URL is not a valid JWKS: %v", err)
-	}
-	fmt.Println("JWKS cache initialized and refreshed")
+	configJWTMiddleware(router)
 
-	router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, *jwksCache))
 	router.Use(cors.New(cors.Config{
 		AllowMethods:     []string{"GET", "POST"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "ACCESS_TOKEN"},
@@ -78,6 +67,29 @@ func initServer() {
 	err = router.Run(serverConfig.Port)
 	if err != nil {
 		log.Fatalf("error starting routes: %v", err)
+	}
+}
+
+func configJWTMiddleware(router *gin.Engine) {
+	authConfig := config.GetAuth()
+
+	if authConfig.Enabled == true {
+		ctx := context.Background()
+
+		jwksCache := jwk.NewCache(ctx)
+		err := jwksCache.Register(authConfig.JSONWebKeysEndpoint, jwk.WithMinRefreshInterval(12*time.Hour))
+		if err != nil {
+			log.Fatalf("Failed to register JWKS URL: %v", err)
+		}
+		if _, err := jwksCache.Refresh(ctx, authConfig.JSONWebKeysEndpoint); err != nil {
+			log.Fatalf("URL is not a valid JWKS: %v", err)
+		}
+		fmt.Println("JWKS cache initialized and refreshed")
+
+		keyFetcher := &auth.DefaultKeyFetcher{}
+		jwtValidator := &auth.DefaultJWTValidator{}
+
+		router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, keyFetcher, jwtValidator))
 	}
 }
 
