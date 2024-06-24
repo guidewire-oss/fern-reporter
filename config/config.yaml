@@ -10,4 +10,7 @@ db:
   max-idle-conns: 10
 server:
   port: :8080
+auth:
+  keys-endpoint: ""
+
 header: "Fern Acceptance Test Report"

@@ -12,6 +12,7 @@ import (
 type config struct {
 	Db     *dbConfig
 	Server *serverConfig
+	Auth   *authConfig
 	Header string
 }
 
@@ -29,6 +30,10 @@ type dbConfig struct {
 
 type serverConfig struct {
 	Port string `mapstructure:"port"`
+}
+
+type authConfig struct {
+	KeysEndpoint string `mapstructure:"keys-endpoint"`
 }
 
 var configuration *config
@@ -69,6 +74,9 @@ func LoadConfig() (*config, error) {
 	}
 	if os.Getenv("FERN_DATABASE") != "" {
 		configuration.Db.Database = os.Getenv("FERN_DATABASE")
+	}
+	if os.Getenv("AUTH_KEYS_ENDPOINT") != "" {
+		configuration.Auth.KeysEndpoint = os.Getenv("AUTH_KEYS_ENDPOINT")
 	}
 	if os.Getenv("FERN_HEADER_NAME") != "" {
 		configuration.Header = os.Getenv("FERN_HEADER_NAME")
