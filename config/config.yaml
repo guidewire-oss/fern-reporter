@@ -12,5 +12,6 @@ server:
   port: :8080
 auth:
   keys-endpoint: ""
+  token-endpoint: ""
 
 header: "Fern Acceptance Test Report"

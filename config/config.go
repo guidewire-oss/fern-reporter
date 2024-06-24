@@ -33,7 +33,8 @@ type serverConfig struct {
 }
 
 type authConfig struct {
-	KeysEndpoint string `mapstructure:"keys-endpoint"`
+	KeysEndpoint  string `mapstructure:"keys-endpoint"`
+	TokenEndpoint string `mapstructure:"token-endpoint"`
 }
 
 var configuration *config
@@ -77,6 +78,9 @@ func LoadConfig() (*config, error) {
 	}
 	if os.Getenv("AUTH_KEYS_ENDPOINT") != "" {
 		configuration.Auth.KeysEndpoint = os.Getenv("AUTH_KEYS_ENDPOINT")
+	}
+	if os.Getenv("AUTH_TOKEN_ENDPOINT") != "" {
+		configuration.Auth.TokenEndpoint = os.Getenv("AUTH_TOKEN_ENDPOINT")
 	}
 	if os.Getenv("FERN_HEADER_NAME") != "" {
 		configuration.Header = os.Getenv("FERN_HEADER_NAME")
