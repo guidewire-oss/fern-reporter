@@ -93,6 +93,10 @@ func GetServer() *serverConfig {
 	return configuration.Server
 }
 
+func GetAuth() *authConfig {
+	return configuration.Auth
+}
+
 func GetHeaderName() string {
 	return configuration.Header
 }
