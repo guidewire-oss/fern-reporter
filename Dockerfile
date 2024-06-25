@@ -9,9 +9,8 @@ ARG TARGETARCH
 ENV GO111MODULE=on \
     CGO_ENABLED=0
 
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk --no-cache add ca-certificates \
+  && update-ca-certificates
 
 # Set the working directory inside the container
 WORKDIR /app

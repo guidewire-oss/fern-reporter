@@ -2,11 +2,12 @@ package auth_test
 
 import (
 	"fmt"
-	"github.com/guidewire/fern-reporter/pkg/auth"
-	"github.com/guidewire/fern-reporter/pkg/auth/mocks"
 	"net/http"
 	"net/http/httptest"
 	"os"
+
+	"github.com/guidewire/fern-reporter/pkg/auth"
+	"github.com/guidewire/fern-reporter/pkg/auth/mocks"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -72,7 +73,8 @@ var _ = Describe("JWTMiddleware", func() {
 		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwkSet, nil)
 
 		mockToken := jwt.New()
-		mockToken.Set("scope", "fern.write")
+		err := mockToken.Set("scope", "fern.write")
+		Expect(err).To(BeNil())
 		mockValidator.On("ParseAndValidateToken", mock.Anything, "valid_token", jwkSet).Return(mockToken, nil)
 
 		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
@@ -95,7 +97,8 @@ var _ = Describe("JWTMiddleware", func() {
 		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwkSet, nil)
 
 		mockToken := jwt.New()
-		mockToken.Set("scope", "fern.write")
+		err := mockToken.Set("scope", "fern.write")
+		Expect(err).To(BeNil())
 		mockValidator.On("ParseAndValidateToken", mock.Anything, "valid_token", jwkSet).Return(mockToken, nil)
 
 		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))

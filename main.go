@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"html/template"
+	"log"
+
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"html/template"
-	"log"
 
 	"time"
 
@@ -73,7 +74,7 @@ func initServer() {
 func configJWTMiddleware(router *gin.Engine) {
 	authConfig := config.GetAuth()
 
-	if authConfig.Enabled == true {
+	if authConfig.Enabled {
 		ctx := context.Background()
 
 		jwksCache := jwk.NewCache(ctx)
