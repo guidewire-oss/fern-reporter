@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+const (
+	fp = "fernproject"
+)
+
 // JWKSFetcher interface for fetching keys from JWKS
 type JWKSFetcher interface {
 	Register(jwksUrl string, options ...jwk.RegisterOption) error
@@ -118,6 +122,10 @@ func JWTMiddleware(jwksUrl string, fetcher JWKSFetcher, validator JWTValidator) 
 	}
 }
 
+type RequestBody struct {
+	Project string `json:"project" binding:"required"`
+}
+
 // ScopeMiddleware Middleware for checking if the user has the necessary scope for the request.
 func ScopeMiddleware() gin.HandlerFunc {
 	permissions := map[string]string{
@@ -125,10 +133,10 @@ func ScopeMiddleware() gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		scopes, ok := c.Get("scope")
+		scope, ok := c.Get("scope")
 		if !ok {
-			log.Printf("Unable to retrieve scopes")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to retrieve scopes"})
+			log.Printf("Unable to retrieve scope")
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to retrieve scope"})
 			return
 		}
 
@@ -139,11 +147,52 @@ func ScopeMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if !strings.Contains(scopes.(string), requiredPermission) {
-			log.Printf("Insufficient scope: required permission %s not found in scopes %s", requiredPermission, scopes.(string))
+		scopeStr := scope.(string)
+
+		if !strings.Contains(scopeStr, requiredPermission) {
+			log.Printf("Insufficient scope: required permission %s not found in scope: %s", requiredPermission, scopeStr)
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient scope"})
 			return
 		}
+
+		if !strings.Contains(scopeStr, fp) {
+			log.Printf("Insufficient scope: The fern project is not found in scope: %s", scopeStr)
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient scope"})
+			return
+		}
+
+		// Read the body to get the project name
+		var requestBody RequestBody
+		if err := c.BindJSON(&requestBody); err != nil {
+			log.Printf("Failed to read request body: %v", err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+			return
+		}
+
+		scopes := strings.Split(scopeStr, " ")
+		for _, v := range scopes {
+			if strings.HasPrefix(v, fp+".") {
+				parts := strings.SplitN(v, ".", 2)
+				if len(parts) != 2 || len(parts[1]) == 0 {
+					log.Printf("The fern project scope claim is not formatted properly. It should be fernproject.<project-name>.")
+					c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "fern project scope claim is not formatted properly"})
+					return
+				}
+
+				fernProjectName := parts[1]
+
+				// Compare the value from the body with the scope claim
+				if requestBody.Project != fernProjectName {
+					log.Printf("Project name from body does not match scope claim. Body: %s, Scope: %s", requestBody.Project, fernProjectName)
+					c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "project name does not match fern project scope claim"})
+					return
+				}
+
+				c.Set("fernProjectName", fernProjectName)
+				break
+			}
+		}
+
 		c.Next()
 	}
 }
