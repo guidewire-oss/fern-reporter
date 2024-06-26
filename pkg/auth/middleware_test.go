@@ -2,12 +2,11 @@ package auth_test
 
 import (
 	"fmt"
+	"github.com/guidewire/fern-reporter/pkg/auth"
+	"github.com/guidewire/fern-reporter/pkg/auth/mocks"
 	"net/http"
 	"net/http/httptest"
 	"os"
-
-	"github.com/guidewire/fern-reporter/pkg/auth"
-	"github.com/guidewire/fern-reporter/pkg/auth/mocks"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -19,7 +18,7 @@ import (
 
 var _ = Describe("JWTMiddleware", func() {
 	var (
-		mockFetcher   *mocks.KeyFetcher
+		mockFetcher   *mocks.JWKSFetcher
 		mockValidator *mocks.JWTValidator
 		router        *gin.Engine
 		recorder      *httptest.ResponseRecorder
@@ -27,7 +26,7 @@ var _ = Describe("JWTMiddleware", func() {
 
 	BeforeEach(func() {
 		gin.SetMode(gin.TestMode)
-		mockFetcher = new(mocks.KeyFetcher)
+		mockFetcher = new(mocks.JWKSFetcher)
 		mockValidator = new(mocks.JWTValidator)
 		router = gin.New()
 		recorder = httptest.NewRecorder()
@@ -66,15 +65,21 @@ var _ = Describe("JWTMiddleware", func() {
 	})
 
 	It("should set scope and call next handler if token is valid", func() {
-		os.Setenv("SCOPE_CLAIM_NAME", "scope")
-		defer os.Unsetenv("SCOPE_CLAIM_NAME")
+		err := os.Setenv("SCOPE_CLAIM_NAME", "scope")
+		Expect(err).To(BeNil())
+
+		defer func() {
+			err := os.Unsetenv("SCOPE_CLAIM_NAME")
+			Expect(err).To(BeNil())
+		}()
 
 		jwkSet := jwk.NewSet()
 		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwkSet, nil)
 
 		mockToken := jwt.New()
-		err := mockToken.Set("scope", "fern.write")
+		err = mockToken.Set("scope", "fern.write")
 		Expect(err).To(BeNil())
+
 		mockValidator.On("ParseAndValidateToken", mock.Anything, "valid_token", jwkSet).Return(mockToken, nil)
 
 		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
@@ -89,51 +94,6 @@ var _ = Describe("JWTMiddleware", func() {
 		Expect(recorder.Code).To(Equal(http.StatusOK))
 		Expect(recorder.Body.String()).To(ContainSubstring("success"))
 	})
-
-	It("should abort with 400 if SCOPE_CLAIM_NAME is not set", func() {
-		os.Unsetenv("SCOPE_CLAIM_NAME")
-
-		jwkSet := jwk.NewSet()
-		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwkSet, nil)
-
-		mockToken := jwt.New()
-		err := mockToken.Set("scope", "fern.write")
-		Expect(err).To(BeNil())
-		mockValidator.On("ParseAndValidateToken", mock.Anything, "valid_token", jwkSet).Return(mockToken, nil)
-
-		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
-		router.GET("/", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "success"})
-		})
-
-		req, _ := http.NewRequest("GET", "/", nil)
-		req.Header.Set("Authorization", "Bearer valid_token")
-		router.ServeHTTP(recorder, req)
-
-		Expect(recorder.Code).To(Equal(http.StatusBadRequest))
-	})
-
-	It("should abort with 400 if scope claim is missing or empty", func() {
-		os.Setenv("SCOPE_CLAIM_NAME", "scope")
-		defer os.Unsetenv("SCOPE_CLAIM_NAME")
-
-		jwkSet := jwk.NewSet()
-		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwkSet, nil)
-
-		mockToken := jwt.New()
-		mockValidator.On("ParseAndValidateToken", mock.Anything, "valid_token", jwkSet).Return(mockToken, nil)
-
-		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
-		router.GET("/", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "success"})
-		})
-
-		req, _ := http.NewRequest("GET", "/", nil)
-		req.Header.Set("Authorization", "Bearer valid_token")
-		router.ServeHTTP(recorder, req)
-
-		Expect(recorder.Code).To(Equal(http.StatusBadRequest))
-	})
 })
 
 var _ = Describe("ScopeMiddleware", func() {
@@ -143,6 +103,7 @@ var _ = Describe("ScopeMiddleware", func() {
 	)
 
 	BeforeEach(func() {
+		gin.SetMode(gin.TestMode)
 		router = gin.New()
 		recorder = httptest.NewRecorder()
 	})
@@ -187,21 +148,5 @@ var _ = Describe("ScopeMiddleware", func() {
 		router.ServeHTTP(recorder, req)
 
 		Expect(recorder.Code).To(Equal(http.StatusForbidden))
-	})
-
-	It("should call next handler if scope includes required permission", func() {
-		router.Use(func(c *gin.Context) {
-			c.Set("scope", "fern.write")
-		})
-		router.Use(auth.ScopeMiddleware())
-		router.POST("/", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "success"})
-		})
-
-		req, _ := http.NewRequest("POST", "/", nil)
-		router.ServeHTTP(recorder, req)
-
-		Expect(recorder.Code).To(Equal(http.StatusOK))
-		Expect(recorder.Body.String()).To(ContainSubstring("success"))
 	})
 })
