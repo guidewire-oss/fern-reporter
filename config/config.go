@@ -82,9 +82,6 @@ func LoadConfig() (*config, error) {
 	if os.Getenv("AUTH_JSON_WEB_KEYS_ENDPOINT") != "" {
 		configuration.Auth.JSONWebKeysEndpoint = os.Getenv("AUTH_JSON_WEB_KEYS_ENDPOINT")
 	}
-	if os.Getenv("AUTH_TOKEN_ENDPOINT") != "" {
-		configuration.Auth.TokenEndpoint = os.Getenv("AUTH_TOKEN_ENDPOINT")
-	}
 	if os.Getenv("AUTH_ENABLED") != "" {
 		configuration.Auth.Enabled, _ = strconv.ParseBool(os.Getenv("AUTH_ENABLED"))
 	}

@@ -61,7 +61,6 @@ var _ = Describe("When LoadConfig is invoked", func() {
 	It("should override configuration with environment variables", func() {
 
 		os.Setenv("AUTH_JSON_WEB_KEYS_ENDPOINT", "https://test-idp-base-url.com/oauth2/abc123/v1/keys")
-		os.Setenv("AUTH_TOKEN_ENDPOINT", "https://test-idp-base-url.com/oauth2/abc123/v1/token")
 		os.Setenv("AUTH_ENABLED", "false")
 		os.Setenv("SCOPE_CLAIM_NAME", "fern_scope")
 		os.Setenv("FERN_USERNAME", "fern")
@@ -82,7 +81,6 @@ var _ = Describe("When LoadConfig is invoked", func() {
 		Expect(result.Db.Port).To(Equal("5432"))
 		Expect(result.Db.Database).To(Equal("fern"))
 		Expect(result.Auth.JSONWebKeysEndpoint).To(Equal("https://test-idp-base-url.com/oauth2/abc123/v1/keys"))
-		Expect(result.Auth.TokenEndpoint).To(Equal("https://test-idp-base-url.com/oauth2/abc123/v1/token"))
 		Expect(result.Auth.Enabled).To(Equal(false))
 		Expect(result.Auth.ScopeClaimName).To(Equal("fern_scope"))
 		Expect(result.Header).To(Equal("Custom Fern Report Header"))
