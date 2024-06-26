@@ -80,9 +80,6 @@ func checkAuthConfig() {
 	if config.GetAuth().JSONWebKeysEndpoint == "" {
 		log.Fatal("Set AUTH_JSON_WEB_KEYS_ENDPOINT environment variable or add a default value in config.yaml")
 	}
-	if config.GetAuth().TokenEndpoint == "" {
-		log.Fatal("Set AUTH_TOKEN_ENDPOINT environment variable or add a default value in config.yaml")
-	}
 }
 
 func configJWTMiddleware(router *gin.Engine) {
