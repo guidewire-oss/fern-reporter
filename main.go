@@ -2,15 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"html/template"
-	"log"
-
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"html/template"
+	"log"
 
 	"time"
 
@@ -44,7 +41,12 @@ func initServer() {
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
 
-	configJWTMiddleware(router)
+	if config.GetAuth().Enabled {
+		checkAuthConfig()
+		configJWTMiddleware(router)
+	} else {
+		log.Println("Auth is disabled, JWT Middleware is not configured.")
+	}
 
 	router.Use(cors.New(cors.Config{
 		AllowMethods:     []string{"GET", "POST"},
@@ -71,27 +73,31 @@ func initServer() {
 	}
 }
 
+func checkAuthConfig() {
+	if config.GetAuth().ScopeClaimName == "" {
+		log.Fatal("Set SCOPE_CLAIM_NAME environment variable or add a default value in config.yaml")
+	}
+	if config.GetAuth().JSONWebKeysEndpoint == "" {
+		log.Fatal("Set AUTH_JSON_WEB_KEYS_ENDPOINT environment variable or add a default value in config.yaml")
+	}
+	if config.GetAuth().TokenEndpoint == "" {
+		log.Fatal("Set AUTH_TOKEN_ENDPOINT environment variable or add a default value in config.yaml")
+	}
+}
+
 func configJWTMiddleware(router *gin.Engine) {
 	authConfig := config.GetAuth()
+	ctx := context.Background()
 
-	if authConfig.Enabled {
-		ctx := context.Background()
-
-		jwksCache := jwk.NewCache(ctx)
-		err := jwksCache.Register(authConfig.JSONWebKeysEndpoint, jwk.WithMinRefreshInterval(12*time.Hour))
-		if err != nil {
-			log.Fatalf("Failed to register JWKS URL: %v", err)
-		}
-		if _, err := jwksCache.Refresh(ctx, authConfig.JSONWebKeysEndpoint); err != nil {
-			log.Fatalf("URL is not a valid JWKS: %v", err)
-		}
-		fmt.Println("JWKS cache initialized and refreshed")
-
-		keyFetcher := &auth.DefaultKeyFetcher{}
-		jwtValidator := &auth.DefaultJWTValidator{}
-
-		router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, keyFetcher, jwtValidator))
+	keyFetcher, err := auth.NewDefaultJWKSFetcher(ctx, authConfig.JSONWebKeysEndpoint)
+	if err != nil {
+		log.Fatalf("Failed to create JWKS fetcher: %v", err)
 	}
+
+	jwtValidator := &auth.DefaultJWTValidator{}
+
+	router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, keyFetcher, jwtValidator))
+	log.Println("JWT Middleware configured successfully.")
 }
 
 func CalculateDuration(start, end time.Time) string {
