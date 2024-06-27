@@ -2,11 +2,12 @@ package auth_test
 
 import (
 	"fmt"
+	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/auth/mocks"
 	"net/http"
 	"net/http/httptest"
-	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -65,30 +66,27 @@ var _ = Describe("JWTMiddleware", func() {
 	})
 
 	It("should set scope and call next handler if token is valid", func() {
-		err := os.Setenv("SCOPE_CLAIM_NAME", "scope")
-		Expect(err).To(BeNil())
-
-		defer func() {
-			err := os.Unsetenv("SCOPE_CLAIM_NAME")
-			Expect(err).To(BeNil())
-		}()
-
+		config.GetAuth().ScopeClaimName = "scope"
 		jwkSet := jwk.NewSet()
 		mockFetcher.On("FetchKeys", mock.Anything, "test_url").Return(jwkSet, nil)
 
 		mockToken := jwt.New()
-		err = mockToken.Set("scope", "fern.write")
+		scope := []interface{}{"fern.write", "fernproject.project-a"}
+		err := mockToken.Set("scope", scope)
 		Expect(err).To(BeNil())
 
 		mockValidator.On("ParseAndValidateToken", mock.Anything, "valid_token", jwkSet).Return(mockToken, nil)
 
 		router.Use(auth.JWTMiddleware("test_url", mockFetcher, mockValidator))
-		router.GET("/", func(c *gin.Context) {
+		router.POST("/", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "success"})
 		})
 
-		req, _ := http.NewRequest("GET", "/", nil)
+		// Create the request body
+		body := `{"Project": "project-a"}`
+		req, _ := http.NewRequest("POST", "/", strings.NewReader(body))
 		req.Header.Set("Authorization", "Bearer valid_token")
+		req.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(recorder, req)
 
 		Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -136,8 +134,9 @@ var _ = Describe("ScopeMiddleware", func() {
 	})
 
 	It("should abort with 403 if scope does not include required permission", func() {
+		scopes := []interface{}{"fern.read"}
 		router.Use(func(c *gin.Context) {
-			c.Set("scope", "fern.read")
+			c.Set("scope", scopes)
 		})
 		router.Use(auth.ScopeMiddleware())
 		router.POST("/", func(c *gin.Context) {

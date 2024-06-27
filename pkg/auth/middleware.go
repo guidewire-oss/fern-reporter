@@ -1,20 +1,22 @@
 package auth
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"golang.org/x/exp/slices"
+	"io"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 )
 
-const (
-	fp = "fernproject"
-)
+const FP = "fernproject"
 
 // JWKSFetcher interface for fetching keys from JWKS
 type JWKSFetcher interface {
@@ -32,13 +34,11 @@ type DefaultJWKSFetcher struct {
 // NewDefaultJWKSFetcher creates a new JWKSFetcher
 func NewDefaultJWKSFetcher(ctx context.Context, jwksUrl string) (*DefaultJWKSFetcher, error) {
 	cache := jwk.NewCache(ctx)
-	err := cache.Register(jwksUrl, jwk.WithMinRefreshInterval(15*time.Second))
-	if err != nil {
+	if err := cache.Register(jwksUrl, jwk.WithMinRefreshInterval(12*time.Hour)); err != nil {
 		log.Printf("Error registering JWKS URL: %v", err)
 		return nil, err
 	}
-	_, err = cache.Refresh(ctx, jwksUrl)
-	if err != nil {
+	if _, err := cache.Refresh(ctx, jwksUrl); err != nil {
 		log.Printf("Error refreshing JWKS cache: %v", err)
 		return nil, err
 	}
@@ -47,17 +47,14 @@ func NewDefaultJWKSFetcher(ctx context.Context, jwksUrl string) (*DefaultJWKSFet
 }
 
 func (f *DefaultJWKSFetcher) Register(jwksUrl string, options ...jwk.RegisterOption) error {
-	log.Printf("Registering JWKS URL: %s", jwksUrl)
 	return f.cache.Register(jwksUrl, options...)
 }
 
 func (f *DefaultJWKSFetcher) Refresh(ctx context.Context, jwksUrl string) (jwk.Set, error) {
-	log.Printf("Refreshing JWKS cache for URL: %s", jwksUrl)
 	return f.cache.Refresh(ctx, jwksUrl)
 }
 
 func (f *DefaultJWKSFetcher) Get(ctx context.Context, jwksUrl string) (jwk.Set, error) {
-	log.Printf("Getting JWKS set for URL: %s", jwksUrl)
 	return f.cache.Get(ctx, jwksUrl)
 }
 
@@ -74,7 +71,6 @@ type JWTValidator interface {
 type DefaultJWTValidator struct{}
 
 func (v *DefaultJWTValidator) ParseAndValidateToken(ctx context.Context, tokenString string, set jwk.Set) (jwt.Token, error) {
-	log.Printf("Parsing and validating token")
 	return jwt.Parse([]byte(tokenString), jwt.WithKeySet(set), jwt.WithContext(ctx))
 }
 
@@ -91,28 +87,25 @@ func JWTMiddleware(jwksUrl string, fetcher JWKSFetcher, validator JWTValidator) 
 
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			log.Printf("Authorization header missing")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header missing"})
 			return
 		}
 
 		authHeaderParts := strings.SplitN(authHeader, " ", 2)
 		if len(authHeaderParts) != 2 || authHeaderParts[0] != "Bearer" {
-			log.Printf("Authorization header format must be Bearer {token}")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header format must be Bearer {token}"})
 			return
 		}
 
 		token, err := validator.ParseAndValidateToken(ctx, authHeaderParts[1], set)
 		if err != nil {
-			log.Printf("Invalid token: %v", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
 		}
 
-		scope, ok := token.PrivateClaims()[config.GetAuth().ScopeClaimName].(string)
+		authConfig := config.GetAuth()
+		scope, ok := token.PrivateClaims()[authConfig.ScopeClaimName].([]interface{})
 		if !ok || len(scope) == 0 {
-			log.Printf("Scope claim is missing or empty")
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "scope claim is missing or empty"})
 			return
 		}
@@ -135,64 +128,92 @@ func ScopeMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		scope, ok := c.Get("scope")
 		if !ok {
-			log.Printf("Unable to retrieve scope")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to retrieve scope"})
 			return
 		}
 
 		requiredPermission, ok := permissions[c.Request.Method]
 		if !ok {
-			log.Printf("Invalid method: %s", c.Request.Method)
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid method"})
 			return
 		}
 
-		scopeStr := scope.(string)
+		scopes := convertToStringSlice(scope.([]interface{}))
 
-		if !strings.Contains(scopeStr, requiredPermission) {
-			log.Printf("Insufficient scope: required permission %s not found in scope: %s", requiredPermission, scopeStr)
+		if !slices.Contains(scopes, requiredPermission) || !containsSubstring(scopes, FP) {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient scope"})
 			return
 		}
 
-		if !strings.Contains(scopeStr, fp) {
-			log.Printf("Insufficient scope: The fern project is not found in scope: %s", scopeStr)
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient scope"})
+		bodyBytes, err := readRequestBody(c)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to read request body"})
 			return
 		}
 
-		// Read the body to get the project name
 		var requestBody RequestBody
 		if err := c.BindJSON(&requestBody); err != nil {
-			log.Printf("Failed to read request body: %v", err)
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
 			return
 		}
 
-		scopes := strings.Split(scopeStr, " ")
-		for _, v := range scopes {
-			if strings.HasPrefix(v, fp+".") {
-				parts := strings.SplitN(v, ".", 2)
-				if len(parts) != 2 || len(parts[1]) == 0 {
-					log.Printf("The fern project scope claim is not formatted properly. It should be fernproject.<project-name>.")
-					c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "fern project scope claim is not formatted properly"})
-					return
-				}
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
-				fernProjectName := parts[1]
-
-				// Compare the value from the body with the scope claim
-				if requestBody.Project != fernProjectName {
-					log.Printf("Project name from body does not match scope claim. Body: %s, Scope: %s", requestBody.Project, fernProjectName)
-					c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "project name does not match fern project scope claim"})
-					return
-				}
-
-				c.Set("fernProjectName", fernProjectName)
-				break
-			}
+		fernProjectName, err := validateProjectName(scopes, requestBody.Project)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
 		}
 
+		c.Set("fernProjectName", fernProjectName)
 		c.Next()
 	}
+}
+
+// readRequestBody reads and returns the request body bytes.
+func readRequestBody(c *gin.Context) ([]byte, error) {
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return nil, err
+	}
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	return bodyBytes, nil
+}
+
+// validateProjectName checks if the project name from the request body matches the scope claim and returns the fernProjectName.
+func validateProjectName(scopes []string, projectName string) (string, error) {
+	for _, v := range scopes {
+		if strings.HasPrefix(v, FP+".") {
+			parts := strings.SplitN(v, ".", 2)
+			if len(parts) != 2 || len(parts[1]) == 0 {
+				return "", fmt.Errorf("fern project scope claim is not formatted properly")
+			}
+
+			fernProjectName := parts[1]
+			if projectName != fernProjectName {
+				return "", fmt.Errorf("project name does not match fern project scope claim")
+			}
+			return fernProjectName, nil
+		}
+	}
+	return "", fmt.Errorf("fern project scope claim not found")
+}
+
+// convertToStringSlice converts a slice of interface{} to a slice of strings.
+func convertToStringSlice(slice []interface{}) []string {
+	strSlice := make([]string, len(slice))
+	for i, v := range slice {
+		strSlice[i] = fmt.Sprint(v)
+	}
+	return strSlice
+}
+
+// containsSubstring checks if any string in the slice contains the specified substring.
+func containsSubstring(slice []string, substring string) bool {
+	for _, v := range slice {
+		if strings.Contains(v, substring) {
+			return true
+		}
+	}
+	return false
 }
