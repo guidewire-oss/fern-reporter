@@ -9,6 +9,9 @@ ARG TARGETARCH
 ENV GO111MODULE=on \
     CGO_ENABLED=0
 
+RUN apk --no-cache add ca-certificates \
+  && update-ca-certificates
+
 # Set the working directory inside the container
 WORKDIR /app
 

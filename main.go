@@ -1,12 +1,13 @@
 package main
 
 import (
-	"html/template"
-	"log"
-
+	"context"
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
+	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
+	"html/template"
+	"log"
 
 	"time"
 
@@ -39,6 +40,14 @@ func initServer() {
 	serverConfig := config.GetServer()
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
+
+	if config.GetAuth().Enabled {
+		checkAuthConfig()
+		configJWTMiddleware(router)
+	} else {
+		log.Println("Auth is disabled, JWT Middleware is not configured.")
+	}
+
 	router.Use(cors.New(cors.Config{
 		AllowMethods:     []string{"GET", "POST"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "ACCESS_TOKEN"},
@@ -62,6 +71,30 @@ func initServer() {
 	if err != nil {
 		log.Fatalf("error starting routes: %v", err)
 	}
+}
+
+func checkAuthConfig() {
+	if config.GetAuth().ScopeClaimName == "" {
+		log.Fatal("Set SCOPE_CLAIM_NAME environment variable or add a default value in config.yaml")
+	}
+	if config.GetAuth().JSONWebKeysEndpoint == "" {
+		log.Fatal("Set AUTH_JSON_WEB_KEYS_ENDPOINT environment variable or add a default value in config.yaml")
+	}
+}
+
+func configJWTMiddleware(router *gin.Engine) {
+	authConfig := config.GetAuth()
+	ctx := context.Background()
+
+	keyFetcher, err := auth.NewDefaultJWKSFetcher(ctx, authConfig.JSONWebKeysEndpoint)
+	if err != nil {
+		log.Fatalf("Failed to create JWKS fetcher: %v", err)
+	}
+
+	jwtValidator := &auth.DefaultJWTValidator{}
+
+	router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, keyFetcher, jwtValidator))
+	log.Println("JWT Middleware configured successfully.")
 }
 
 func CalculateDuration(start, end time.Time) string {

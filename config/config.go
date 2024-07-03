@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/viper"
 )
@@ -12,6 +13,7 @@ import (
 type config struct {
 	Db     *dbConfig
 	Server *serverConfig
+	Auth   *authConfig
 	Header string
 }
 
@@ -29,6 +31,13 @@ type dbConfig struct {
 
 type serverConfig struct {
 	Port string `mapstructure:"port"`
+}
+
+type authConfig struct {
+	JSONWebKeysEndpoint string `mapstructure:"json-web-keys-endpoint"`
+	TokenEndpoint       string `mapstructure:"token-endpoint"`
+	Enabled             bool   `mapstructure:"enabled"`
+	ScopeClaimName      string `mapstructure:"scope-claim-name"`
 }
 
 var configuration *config
@@ -70,6 +79,15 @@ func LoadConfig() (*config, error) {
 	if os.Getenv("FERN_DATABASE") != "" {
 		configuration.Db.Database = os.Getenv("FERN_DATABASE")
 	}
+	if os.Getenv("AUTH_JSON_WEB_KEYS_ENDPOINT") != "" {
+		configuration.Auth.JSONWebKeysEndpoint = os.Getenv("AUTH_JSON_WEB_KEYS_ENDPOINT")
+	}
+	if os.Getenv("AUTH_ENABLED") != "" {
+		configuration.Auth.Enabled, _ = strconv.ParseBool(os.Getenv("AUTH_ENABLED"))
+	}
+	if os.Getenv("SCOPE_CLAIM_NAME") != "" {
+		configuration.Auth.ScopeClaimName = os.Getenv("SCOPE_CLAIM_NAME")
+	}
 	if os.Getenv("FERN_HEADER_NAME") != "" {
 		configuration.Header = os.Getenv("FERN_HEADER_NAME")
 	}
@@ -83,6 +101,10 @@ func GetDb() *dbConfig {
 
 func GetServer() *serverConfig {
 	return configuration.Server
+}
+
+func GetAuth() *authConfig {
+	return configuration.Auth
 }
 
 func GetHeaderName() string {

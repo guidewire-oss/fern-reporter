@@ -1,16 +1,15 @@
-package routers_test
+package auth_test
 
 import (
 	"github.com/guidewire/fern-reporter/config"
-	"testing"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"testing"
 )
 
-func TestRouters(t *testing.T) {
+func TestAuth(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Routers Suite")
+	RunSpecs(t, "Auth Suite")
 }
 
 var _ = BeforeSuite(func() {

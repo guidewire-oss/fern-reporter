@@ -11,6 +11,11 @@ ENV POSTGRES_DB=fern
 ENV POSTGRES_USER=fern
 ENV POSTGRES_PASSWORD=fern
 
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+
 # Initialize the database and create the user and database (adjust commands as needed)
 RUN service postgresql start && \
     su postgres -c "createuser --superuser $POSTGRES_USER" && \
