@@ -33,6 +33,10 @@ func RegisterRouters(router *gin.Engine) {
 		testRun.POST("/", handler.CreateTestRun)
 		testRun.PUT("/:id", handler.UpdateTestRun)
 		testRun.DELETE("/:id", handler.DeleteTestRun)
+
+		testReport := api.Group("/reports/testruns")
+		testReport.GET("/", handler.ReportTestRunAll)
+		testReport.GET("/:id", handler.ReportTestRunById)
 	}
 
 	var reports *gin.RouterGroup
@@ -44,8 +48,8 @@ func RegisterRouters(router *gin.Engine) {
 
 	reports.Use()
 	{
-		testRunReport := reports.GET("/", handler.ReportTestRunAll)
-		testRunReport.GET("/:id", handler.ReportTestRunById)
+		reports.GET("/", handler.ReportTestRunAllHTML)
+		reports.GET("/:id", handler.ReportTestRunByIdHTML)
 	}
 
 	var ping *gin.RouterGroup

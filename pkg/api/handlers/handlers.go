@@ -148,13 +148,35 @@ func (h *Handler) DeleteTestRun(c *gin.Context) {
 func (h *Handler) ReportTestRunAll(c *gin.Context) {
 	var testRuns []models.TestRun
 	h.db.Preload("SuiteRuns.SpecRuns.Tags").Find(&testRuns)
+
+	c.JSON(http.StatusOK, gin.H{
+		"testRuns":     testRuns,
+		"reportHeader": config.GetHeaderName(),
+		"total":        len(testRuns),
+	})
+}
+
+func (h *Handler) ReportTestRunById(c *gin.Context) {
+	var testRun models.TestRun
+	id := c.Param("id")
+	h.db.Preload("SuiteRuns.SpecRuns").Where("id = ?", id).First(&testRun)
+
+	c.JSON(http.StatusOK, gin.H{
+		"reportHeader": config.GetHeaderName(),
+		"testRuns":     []models.TestRun{testRun},
+	})
+}
+
+func (h *Handler) ReportTestRunAllHTML(c *gin.Context) {
+	var testRuns []models.TestRun
+	h.db.Preload("SuiteRuns.SpecRuns.Tags").Find(&testRuns)
 	c.HTML(http.StatusOK, "test_runs.html", gin.H{
 		"reportHeader": config.GetHeaderName(),
 		"testRuns":     testRuns,
 	})
 }
 
-func (h *Handler) ReportTestRunById(c *gin.Context) {
+func (h *Handler) ReportTestRunByIdHTML(c *gin.Context) {
 	var testRun models.TestRun
 	id := c.Param("id")
 	h.db.Preload("SuiteRuns.SpecRuns").Where("id = ?", id).First(&testRun)

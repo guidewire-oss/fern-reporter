@@ -57,15 +57,27 @@ Fern is a Golang Gin-based API that connects to a PostgreSQL database. It is des
 
 ### Integrating the Client into Ginkgo Test Suites
 
-  Refer the client repository to integrate the client to Ginkgo Test Suites: 
+* Refer the client repository to integrate the client to Ginkgo Test Suites: 
   https://github.com/Guidewire/fern-ginkgo-client
+* After adding the client, run your Ginkgo tests normally.
 
-2. **Run Your Tests**: After adding the client, run your Ginkgo tests normally.
+### Accessing Test Reports using embedded HTML view
 
-### Accessing Test Reports
+- View reports at `http://[your-api-url]/reports/testruns/`.
+- If using `make docker-run-local`, reports are available at `http://localhost:8080/reports/testruns/`.
+
+### Accessing Test Reports using Fern-UI
+
+To view the test reports using the React-based Fern-UI frontend, follow these steps:
+
+- Follow the instructions in the [Fern-UI repository](https://github.com/Guidewire/fern-ui) to set up and run the frontend application.
+- Once the Fern-UI is running, access the dashboard at `http://[frontend-api-url]/testruns` to view the test reports.
 
 - View reports at `http://[your-api-url]/reports/testruns`.
 - If using `make docker-run-local`, reports are available at `http://localhost:8080/reports/testruns`.
+
+### Accessing Test Reports using the API
+Reports are also available as JSON at `http://[host-url]/api/reports/testruns`.
 
 ### Additional Resources
 
