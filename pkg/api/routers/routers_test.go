@@ -63,8 +63,8 @@ var _ = Describe("RegisterRouters", func() {
 			Expect(router).NotTo(BeNil())
 
 			// Check if report routes are registered correctly
-			ExpectRoute(router, "GET", "/reports/testruns/", handler.ReportTestRunAll)
-			ExpectRoute(router, "GET", "/reports/testruns/:id", handler.ReportTestRunById)
+			ExpectRoute(router, "GET", "/reports/testruns/", handler.ReportTestRunAllHTML)
+			ExpectRoute(router, "GET", "/reports/testruns/:id", handler.ReportTestRunByIdHTML)
 		})
 	})
 })
