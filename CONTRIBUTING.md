@@ -38,7 +38,7 @@ This section guides you through submitting an enhancement suggestion for fern-re
 
 Unsure where to begin contributing to fern-reporter? You can start by looking through 'beginner' and 'help-wanted' issues:
 
-* [Beginner issues](https://github.com/guidewire/fern-reporter/labels/beginner) - issues which should only require a few lines of code, and a test or two.
+* [Beginner issues](https://github.com/guidewire/fern-reporter/labels/good%20first%20issue) - issues which should only require a few lines of code, and a test or two.
 * [Help wanted issues](https://github.com/guidewire/fern-reporter/labels/help%20wanted) - issues which should be a bit more involved than 'beginner' issues.
 
 ### Pull Requests
