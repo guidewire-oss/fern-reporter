@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .reportHeader }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+    <style>
+      body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+      }
+
+      .container {
+        margin-top: 20px;
+      }
+
+      caption {
+          font-size: 1.5em;
+          font-weight: bold;
+      }
+
+      .test-row {
+        cursor: pointer;
+        transition: background-color 0.3s, color 0.3s;
+      }
+
+      .test-row:hover {
+        background-color: #f0f0f0;
+      }
+
+      .table td {
+        word-wrap: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="title is-3 has-text-centered has-background-primary has-text-white p-4">{{ .reportHeader }}</h1>
+        <table style="width: 100%;">
+            <tr>
+                <td>
+                  <div class="field">
+                      <label class="label">Click to Select Time Window</label>
+                      <div class="control">
+                        <input type="text" name="datetimes" style="width: 300px;" />
+                      </div>
+                  </div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="notification is-info" style="padding: 10px; margin-top: 20px;">
+            <strong>Displaying test insights in range: </strong> {{ .startTime }} to {{ .endTime }}
+        </div>
+        <table class="table is-bordered is-narrow is-fullwidth">
+            <caption style="font-weight: bold">Summary of Test Insights </caption>
+            <tbody>
+            <tr>
+                <th>Project Name</th>
+                <th>Average Duration (sec)</th>
+                <th>Total Tests Within Time Period</th>
+            </tr>
+            <td>{{ .projectName }}</td>
+            <td>{{ .averageDuration }}</td>
+            <td>{{ .numTests }}</td>
+            </tbody>
+        </table>
+
+        <table class="table is-fullwidth">
+          <caption style="font-weight: bold">Top Ten Time Consuming Tests (Descending)</caption>
+        <thead>
+          <tr>
+            <th>Test Run ID</th>
+            <th>Test Project Name</th>
+            <th>Test Duration</th>
+            <th>Spec Pass Rate</th>
+            <th>Test Date</th>
+            <th>Test Details</th>
+          </tr>
+        </thead>
+        <tbody>
+        {{ $testRuns := .longestTestRuns }}
+        {{range $testRun := $testRuns}}
+            <tr class="test-row">
+            <td class="test-serial-number">{{ $testRun.SuiteID }}</td>
+            <td class="test-project-name">{{ $testRun.TestProjectName }}</td>
+            <td class="test-duration">{{ CalculateDuration $testRun.StartTime $testRun.EndTime  }}</td>
+            <td class="spec-pass-rate"> {{ $testRun.PassRate }}%</td>
+            <td class="spec-pass-rate"> {{ FormatDate $testRun.StartTime }}</td>
+            <td><button class="button is-info testdetails-btn" testdetails-url="/reports/testruns/{{ $testRun.SuiteID }}">Test Details</button></td>
+          </tr>
+        {{end}}
+    </tbody>
+    </table>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment/min/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          $('input[name="datetimes"]').daterangepicker({
+              timePicker: true,
+              startDate: moment().startOf('day').add(-24, 'hours'),
+              endDate: moment(),
+              showDropdowns: true,
+              autoUpdateInput: false,
+              locale: {
+                  format: 'MM/DD/YYYY hh:mm A'
+              }
+          }, function(start, end, label) {
+              const startTime = start.format('YYYY-MM-DDTHH:mm:ss');
+              const endTime = end.format('YYYY-MM-DDTHH:mm:ss');
+              const projectName = "{{ .projectName }}";
+              window.location.href = `/insights/${projectName}?startTime=${startTime}&endTime=${endTime}`;
+          });
+
+          document.querySelectorAll('.testdetails-btn').forEach(function (button) {
+              button.addEventListener('click', function (event) {
+                  event.stopPropagation();
+                  const testUrl = event.target.getAttribute('testdetails-url');
+                  window.open(testUrl, '_blank');
+              });
+          });
+      });
+    </script>
+  </body>
+</html>

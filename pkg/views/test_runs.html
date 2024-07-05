@@ -99,6 +99,7 @@
             <th>Spec Description</th>
             <th>Spec Status</th>
             <th>Spec Duration</th>
+            <th>Insights</th>
             <th>Tags</th>
           </tr>
         </thead>
@@ -114,7 +115,8 @@
             <td class="test-project-name">{{ $testRun.TestProjectName }}</td>
             <td class="test-name">{{ $specRun.SpecDescription }}</td>
             <td class="test-status">{{ $specRun.Status}}</td>
-            <td>{{ CalculateDuration $specRun.StartTime $specRun.EndTime }}</td>
+            <td class="test-duration">{{ CalculateDuration $specRun.StartTime $specRun.EndTime }}</td>
+            <td><button class="button is-info insights-btn" data-insights-url="/insights/{{ $testRun.TestProjectName }}">Insights</button></td>
             <td>
               {{ $tags := $specRun.Tags }}
               {{ range $tag := $tags}}
@@ -167,6 +169,12 @@
               row.querySelector('.expand-icon').classList.remove('fa-plus');
               row.querySelector('.expand-icon').classList.add('fa-minus');
             }
+          });
+
+          row.querySelector('.insights-btn').addEventListener('click', (event) => {
+            event.stopPropagation();
+            const insightsUrl = event.target.getAttribute('data-insights-url');
+            window.open(insightsUrl, '_blank');
           });
         });
       });

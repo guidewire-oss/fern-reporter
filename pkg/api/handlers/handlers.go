@@ -3,11 +3,14 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"github.com/guidewire/fern-reporter/pkg/models"
+
 	"github.com/guidewire/fern-reporter/config"
+	"github.com/guidewire/fern-reporter/pkg/models"
+
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -183,6 +186,41 @@ func (h *Handler) ReportTestRunByIdHTML(c *gin.Context) {
 	c.HTML(http.StatusOK, "test_runs.html", gin.H{
 		"reportHeader": config.GetHeaderName(),
 		"testRuns":     []models.TestRun{testRun},
+	})
+}
+
+func (h *Handler) ReportTestInsights(c *gin.Context) {
+	projectName := c.Param("name")
+	startTimeInput := c.Query("startTime")
+	endTimeInput := c.Query("endTime")
+
+	startTime, err := ParseTimeFromStringWithDefault(startTimeInput, time.Now().AddDate(-1, 0, 0))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid startTime parameter: %v", err)})
+	}
+	endTime, err := ParseTimeFromStringWithDefault(endTimeInput, time.Now())
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid endTimeInput parameter: %v", err)})
+	}
+
+	longestTestRuns := GetLongestTestRuns(h, projectName, startTime, endTime)
+	numTests := len(longestTestRuns)
+	if len(longestTestRuns) > 10 {
+		longestTestRuns = longestTestRuns[:10] //only send top 10 longest runs to display
+	}
+
+	averageDuration := GetAverageDuration(h, projectName, startTime, endTime)
+	fmt.Printf("longestTestRuns: %v\n", longestTestRuns)
+	fmt.Printf("averageDuration: %v\n", averageDuration)
+
+	c.HTML(http.StatusOK, "insights.html", gin.H{
+		"reportHeader":    config.GetHeaderName(),
+		"projectName":     projectName,
+		"startTime":       startTime,
+		"endTime":         endTime,
+		"averageDuration": averageDuration,
+		"longestTestRuns": longestTestRuns,
+		"numTests":        numTests,
 	})
 }
 
