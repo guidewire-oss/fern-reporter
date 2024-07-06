@@ -1,0 +1,44 @@
+type Tag {
+  id: Int
+  name: String
+}
+
+type SpecRun {
+  id: Int
+  suiteId: Int
+  specDescription: String
+  status: String
+  message: String
+  startTime: String
+  endTime: String
+  tags: [Tag]
+}
+
+type SuiteRun {
+  id: Int!
+  testRunId: Int!
+  suiteName: String
+  startTime: String
+  endTime: String
+  specRuns: [SpecRun]
+}
+
+type TestRun {
+  id: Int!
+  testProjectName: String
+  testSeed: Int
+  startTime: String
+  endTime: String
+  suiteRuns: [SuiteRun!]!
+}
+
+input TestRunFilter {
+  id: Int
+  testProjectName: String
+}
+
+type Query {
+  testRuns: [TestRun!]!
+  testRun(testRunFilter: TestRunFilter!): [TestRun!]!
+  testRunById(id: Int!): TestRun
+}
