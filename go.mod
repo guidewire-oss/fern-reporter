@@ -16,7 +16,7 @@ require (
 	github.com/onsi/gomega v1.30.0
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
-	github.com/vektah/gqlparser/v2 v2.5.11
+	github.com/vektah/gqlparser/v2 v2.5.15
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.10
