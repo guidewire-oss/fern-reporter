@@ -6,7 +6,7 @@ require (
 	github.com/99designs/gqlgen v0.17.49
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/PuerkitoBio/goquery v1.9.2
-	github.com/gin-contrib/cors v1.7.1
+	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/lestrrat-go/iter v1.0.2
@@ -37,7 +37,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.19.0 // indirect
+	github.com/go-playground/validator/v10 v10.20.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/gobuffalo/here v0.6.7 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
