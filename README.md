@@ -85,7 +85,7 @@ Reports are also available as JSON at `http://[host-url]/api/reports/testruns`.
 
 ## 🤩 Thanks to all our Contributors
 
-Thanks to everyone, that is supporting this project. We are thankful, for evey contribution, no matter its size!
+Thanks to everyone, that is supporting this project. We are thankful, for evey contribution, no matter its size!!
 
 <a href="https://github.com/Guidewire/fern-reporter/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=Guidewire/fern-reporter" />
