@@ -26,16 +26,6 @@
         background-color: #f0f0f0;
       }
 
-      .status-passed {
-        color: #2ecc71;
-        font-weight: bold;
-      }
-
-      .status-failed {
-        color: #e74c3c;
-        font-weight: bold;
-      }
-
       .expand-icon {
         color: #3498db;
         font-size: 1.2em;
@@ -71,13 +61,16 @@
         <table style="width: 100%;">
           <tr>
             <td>
-              <button onclick="filterTests('passed')" class="button is-success">Show PassedTests</button>
+              <button onclick="filterTests('passed')" class="button is-success">Show Passed Tests</button>
+            </td>
+            <td>
+              <button onclick="filterTests('skipped')" class="button is-warning">Show Skipped Tests</button>
             </td>
             <td>
               <button onclick="filterTests('failed')" class="button is-danger">Show Failed Tests</button>
             </td>
             <td>
-              <button onclick="filterTests('all')" class="button">Show All Tests</button>
+              <button onclick="filterTests('all')" class="button is-info">Show All Tests</button>
             </td>
             <td style="align-items: center;width: 15%; vertical-align: middle;">
               <span style="font-weight: bold;">Total Tests: 1</span>
@@ -110,7 +103,7 @@
           {{range $suiteRun := $suiteRuns}}
             {{ $specRuns := $suiteRun.SpecRuns }}
             {{range $specRun := $specRuns}}
-            <tr class="test-row" style="background-color: {{if eq .Status "passed"}}green{{else}}red{{end}}; font-weight: bold; font-display: color: white;">
+            <tr class="test-row" style="background-color: {{if eq .Status "passed"}}green{{else}}{{if eq .Status "failed"}}red{{else}}yellow{{end}}{{end}}; font-weight: bold; font-display: color: white;">
             <td class="test-serial-number">{{ $suiteRun.TestRunID }}</td>
             <td class="test-project-name">{{ $testRun.TestProjectName }}</td>
             <td class="test-name">{{ $specRun.SpecDescription }}</td>
