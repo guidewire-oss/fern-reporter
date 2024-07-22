@@ -1,6 +1,6 @@
 module github.com/guidewire/fern-reporter
 
-go 1.21
+go 1.21.12
 
 require (
 	github.com/99designs/gqlgen v0.17.49
