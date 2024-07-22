@@ -62,5 +62,5 @@ jobs:
             VERSION=${{ steps.get_version.outputs.VERSION }}
             GOPROXY=https://proxy.golang.org
           tags: |-
-            docker.io/guidewire-oss/fern-reporter:${{ steps.get_version.outputs.VERSION }}
+            docker.io/anoop2811/fern-reporter:${{ steps.get_version.outputs.VERSION }}
             ghcr.io/${{ github.repository_owner }}/guidewire-oss/fern-reporter:${{ steps.get_version.outputs.VERSION }}
