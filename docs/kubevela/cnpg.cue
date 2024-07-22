@@ -4,6 +4,12 @@
 	description: "Cloud Native Postgres"
 	labels: {
 	}
+	attributes: workload: {
+		definition: {
+			apiVersion: "postgresql.cnpg.io/v1"
+			kind:       "Cluster"
+		}
+	}
 	type: "component"
 }
 
