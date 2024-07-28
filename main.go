@@ -4,8 +4,8 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/guidewire/fern-reporter/pkg/graph/generated"
 	"github.com/guidewire/fern-reporter/pkg/graph/resolvers"
-	"gorm.io/gorm"
 	"github.com/guidewire/fern-reporter/pkg/utils"
+	"gorm.io/gorm"
 
 	"context"
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -125,4 +125,3 @@ func configJWTMiddleware(router *gin.Engine) {
 	router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, keyFetcher, jwtValidator))
 	log.Println("JWT Middleware configured successfully.")
 }
-

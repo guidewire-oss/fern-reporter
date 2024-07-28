@@ -993,6 +993,76 @@ var _ = Describe("Handlers", func() {
 			expectedBody := `{"message":"Fern Reporter is running!"}`
 			Expect(w.Body.String()).To(Equal(expectedBody))
 		})
-
 	})
+
+	Context("When the report project handler is invoked", func() {
+		It("should return all project names in ascending order", func() {
+			projectRows := sqlmock.NewRows([]string{"test_project_name"}).
+				AddRow("ProjectA").
+				AddRow("ProjectF").
+				AddRow("ProjectZ")
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT DISTINCT test_project_name FROM "test_runs" ORDER BY test_project_name asc`)).
+				WillReturnRows(projectRows)
+
+			gin.SetMode(gin.TestMode)
+			router := gin.Default()
+			handler := handlers.NewHandler(gormDb)
+			router.GET("/api/reports/projects", handler.GetProjectAll)
+
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", "/api/reports/projects", nil)
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			expectedJSON := `{"projects":["ProjectA","ProjectF","ProjectZ"]}`
+			Expect(w.Body.String()).To(MatchJSON(expectedJSON))
+		})
+	})
+
+	Context("When a request is made to get a test summary by project name", func() {
+		It("should return the summary of test runs for the project", func() {
+			projectName := "TestProject"
+			rows := sqlmock.NewRows([]string{"suite_run_id", "test_project_name", "start_time", "total_passed_spec_runs", "total_skipped_spec_runs", "total_spec_runs"}).
+				AddRow(1, "TestProject", time.Date(2024, 4, 20, 12, 0, 0, 0, time.UTC), 5, 1, 10).
+				AddRow(2, "TestProject", time.Date(2024, 4, 21, 12, 0, 0, 0, time.UTC), 7, 2, 12)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT suite_runs.id AS suite_run_id, test_runs.test_project_name, 
+			   test_runs.start_time, COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'passed') AS total_passed_spec_runs, 
+			   COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'skipped') AS total_skipped_spec_runs, COUNT(spec_runs.id) 
+           		AS total_spec_runs FROM "test_runs" INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id 
+				  INNER JOIN spec_runs ON suite_runs.id = spec_runs.suite_id 
+				  WHERE test_runs.test_project_name = $1 
+				  GROUP BY suite_runs.id, test_runs.test_project_name, test_runs.start_time 
+				  ORDER BY test_runs.start_time`)).WithArgs(projectName).WillReturnRows(rows)
+
+			w := httptest.NewRecorder()
+			c, router := gin.CreateTestContext(w)
+			handler := handlers.NewHandler(gormDb)
+
+			c.Request, _ = http.NewRequest("GET", "/summary/TestProject/", nil)
+			router.GET("/summary/:name/", handler.GetTestSummary)
+			router.ServeHTTP(w, c.Request)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+
+			expectedJSON := `[{
+				"SuiteRunID": 1,
+				"TestProjectName": "TestProject",
+				"StartTime": "2024-04-20T12:00:00Z",
+				"TotalPassedSpecRuns": 5,
+				"TotalSkippedSpecRuns": 1,
+				"TotalSpecRuns": 10
+			}, {
+				"SuiteRunID": 2,
+				"TestProjectName": "TestProject",
+				"StartTime": "2024-04-21T12:00:00Z",
+				"TotalPassedSpecRuns": 7,
+				"TotalSkippedSpecRuns": 2,
+				"TotalSpecRuns": 12
+			}]`
+			Expect(w.Body.String()).To(MatchJSON(expectedJSON))
+		})
+	})
+
 })

@@ -238,6 +238,24 @@ func (h *Handler) ReportTestInsights(c *gin.Context) {
 	})
 }
 
+func (h *Handler) GetProjectAll(c *gin.Context) {
+	var projectNames []string
+	h.db.Table("test_runs").
+		Distinct("test_project_name").
+		Order("test_project_name asc").
+		Pluck("test_project_name", &projectNames)
+	c.JSON(http.StatusOK, gin.H{
+		"projects": projectNames,
+	})
+}
+
+func (h *Handler) GetTestSummary(c *gin.Context) {
+	projectName := c.Param("name")
+	testSummaries := GetProjectSpecStatistics(h, projectName)
+
+	c.JSON(http.StatusOK, testSummaries)
+}
+
 func (h *Handler) Ping(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "Fern Reporter is running!",
