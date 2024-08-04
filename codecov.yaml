@@ -6,9 +6,3 @@ coverage:
     patch:
       default:
         target: 70%
-ignore:
-  - "**/zz_generated.deepcopy.go"
-  - "references/"
-  - "apis/"
-fixes:
-  - "github.com/guidewire/fern-reporter::fern-reporter/"
