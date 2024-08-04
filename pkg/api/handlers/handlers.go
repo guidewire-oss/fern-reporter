@@ -6,6 +6,7 @@ import (
 
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/models"
+	"github.com/guidewire/fern-reporter/pkg/utils"
 
 	"log"
 	"net/http"
@@ -173,9 +174,15 @@ func (h *Handler) ReportTestRunById(c *gin.Context) {
 func (h *Handler) ReportTestRunAllHTML(c *gin.Context) {
 	var testRuns []models.TestRun
 	h.db.Preload("SuiteRuns.SpecRuns.Tags").Find(&testRuns)
+	totalTests, executedTests, passedTests, failedTests := utils.CalculateTestMetrics(testRuns)
+
 	c.HTML(http.StatusOK, "test_runs.html", gin.H{
-		"reportHeader": config.GetHeaderName(),
-		"testRuns":     testRuns,
+		"reportHeader":  config.GetHeaderName(),
+		"testRuns":      testRuns,
+		"totalTests":    totalTests,
+		"executedTests": executedTests,
+		"passedTests":   passedTests,
+		"failedTests":   failedTests,
 	})
 }
 
@@ -183,9 +190,16 @@ func (h *Handler) ReportTestRunByIdHTML(c *gin.Context) {
 	var testRun models.TestRun
 	id := c.Param("id")
 	h.db.Preload("SuiteRuns.SpecRuns").Where("id = ?", id).First(&testRun)
+	testRuns := []models.TestRun{testRun}
+	totalTests, executedTests, passedTests, failedTests := utils.CalculateTestMetrics(testRuns)
+
 	c.HTML(http.StatusOK, "test_runs.html", gin.H{
-		"reportHeader": config.GetHeaderName(),
-		"testRuns":     []models.TestRun{testRun},
+		"reportHeader":  config.GetHeaderName(),
+		"testRuns":      []models.TestRun{testRun},
+		"totalTests":    totalTests,
+		"executedTests": executedTests,
+		"passedTests":   passedTests,
+		"failedTests":   failedTests,
 	})
 }
 

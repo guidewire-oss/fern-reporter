@@ -73,13 +73,13 @@
               <button onclick="filterTests('all')" class="button is-info">Show All Tests</button>
             </td>
             <td style="align-items: center;width: 15%; vertical-align: middle;">
-              <span style="font-weight: bold;">Total Tests: 1</span>
+              <span style="font-weight: bold;">Total Tests: {{ .totalTests }}</span>
             </td>
             <td style="align-items: center;width: 15%; vertical-align: middle;">
-              <span style="font-weight: bold;">Executed Tests: 1</span>
+              <span style="font-weight: bold;">Executed Tests: {{ .executedTests }}</span>
             </td>
             <td style="align-items: center;width: 15%; vertical-align: middle;">
-              <span class="status-failed">Failed</span>/ <span class="status-passed">Passed</span>: <span class="status-failed">1</span>/ <span class="status-passed">0</span>
+              <span class="status-failed">Failed</span>/ <span class="status-passed">Passed</span>: <span class="status-failed">{{ .failedTests }}</span>/ <span class="status-passed">{{ .passedTests }}</span>
             </td>
           </tr>
         </table>
