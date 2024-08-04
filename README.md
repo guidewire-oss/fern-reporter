@@ -8,7 +8,7 @@
     <a href="https://goreportcard.com/report/github.com/guidewire/fern-reporter" alt="Go Report Card">
         <img src="https://goreportcard.com/badge/github.com/guidewire/fern-reporter" /></a>
     <a href="https://codecov.io/gh/guidewire-oss/fern-reporter" alt="Code Coverage">
-        <img src="https://codecov.io/gh/guidewire/fern-reporter/branch/main/graph/badge.svg" /></a>
+        <img src="https://codecov.io/gh/guidewire-oss/fern-reporter/branch/main/graph/badge.svg" /></a>
     <a href="https://github.com/guidewire/fern-reporter/graphs/contributors" alt="Release">
         <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/guidewire/fern-reporter"></a>
 </p>
