@@ -38,7 +38,25 @@ input TestRunFilter {
 }
 
 type Query {
-  testRuns: [TestRun!]!
+  testRuns(first: Int, after: String): TestRunConnection!
   testRun(testRunFilter: TestRunFilter!): [TestRun!]!
   testRunById(id: Int!): TestRun
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String!
+  endCursor: String!
+}
+
+type TestRunEdge {
+  cursor: String!
+  testRun: TestRun!
+}
+
+type TestRunConnection {
+  edges: [TestRunEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
 }

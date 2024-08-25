@@ -40,10 +40,17 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	PageInfo struct {
+		EndCursor       func(childComplexity int) int
+		HasNextPage     func(childComplexity int) int
+		HasPreviousPage func(childComplexity int) int
+		StartCursor     func(childComplexity int) int
+	}
+
 	Query struct {
 		TestRun     func(childComplexity int, testRunFilter modelv2.TestRunFilter) int
 		TestRunByID func(childComplexity int, id int) int
-		TestRuns    func(childComplexity int) int
+		TestRuns    func(childComplexity int, first *int, after *string) int
 	}
 
 	SpecRun struct {
@@ -79,6 +86,17 @@ type ComplexityRoot struct {
 		TestProjectName func(childComplexity int) int
 		TestSeed        func(childComplexity int) int
 	}
+
+	TestRunConnection struct {
+		Edges      func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	TestRunEdge struct {
+		Cursor  func(childComplexity int) int
+		TestRun func(childComplexity int) int
+	}
 }
 
 type executableSchema struct {
@@ -99,6 +117,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "PageInfo.endCursor":
+		if e.complexity.PageInfo.EndCursor == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.EndCursor(childComplexity), true
+
+	case "PageInfo.hasNextPage":
+		if e.complexity.PageInfo.HasNextPage == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.HasNextPage(childComplexity), true
+
+	case "PageInfo.hasPreviousPage":
+		if e.complexity.PageInfo.HasPreviousPage == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.HasPreviousPage(childComplexity), true
+
+	case "PageInfo.startCursor":
+		if e.complexity.PageInfo.StartCursor == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.StartCursor(childComplexity), true
 
 	case "Query.testRun":
 		if e.complexity.Query.TestRun == nil {
@@ -129,7 +175,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.TestRuns(childComplexity), true
+		args, err := ec.field_Query_testRuns_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TestRuns(childComplexity, args["first"].(*int), args["after"].(*string)), true
 
 	case "SpecRun.endTime":
 		if e.complexity.SpecRun.EndTime == nil {
@@ -285,6 +336,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TestRun.TestSeed(childComplexity), true
 
+	case "TestRunConnection.edges":
+		if e.complexity.TestRunConnection.Edges == nil {
+			break
+		}
+
+		return e.complexity.TestRunConnection.Edges(childComplexity), true
+
+	case "TestRunConnection.pageInfo":
+		if e.complexity.TestRunConnection.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.TestRunConnection.PageInfo(childComplexity), true
+
+	case "TestRunConnection.totalCount":
+		if e.complexity.TestRunConnection.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.TestRunConnection.TotalCount(childComplexity), true
+
+	case "TestRunEdge.cursor":
+		if e.complexity.TestRunEdge.Cursor == nil {
+			break
+		}
+
+		return e.complexity.TestRunEdge.Cursor(childComplexity), true
+
+	case "TestRunEdge.testRun":
+		if e.complexity.TestRunEdge.TestRun == nil {
+			break
+		}
+
+		return e.complexity.TestRunEdge.TestRun(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -416,9 +502,27 @@ input TestRunFilter {
 }
 
 type Query {
-  testRuns: [TestRun!]!
+  testRuns(first: Int, after: String): TestRunConnection!
   testRun(testRunFilter: TestRunFilter!): [TestRun!]!
   testRunById(id: Int!): TestRun
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String!
+  endCursor: String!
+}
+
+type TestRunEdge {
+  cursor: String!
+  testRun: TestRun!
+}
+
+type TestRunConnection {
+  edges: [TestRunEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
 }
 `, BuiltIn: false},
 }
