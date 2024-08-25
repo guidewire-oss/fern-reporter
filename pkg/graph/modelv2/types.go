@@ -2,6 +2,13 @@
 
 package modelv2
 
+type PageInfo struct {
+	HasNextPage     bool   `json:"hasNextPage"`
+	HasPreviousPage bool   `json:"hasPreviousPage"`
+	StartCursor     string `json:"startCursor"`
+	EndCursor       string `json:"endCursor"`
+}
+
 type Query struct {
 }
 
@@ -37,6 +44,17 @@ type TestRun struct {
 	StartTime       *string     `json:"startTime,omitempty"`
 	EndTime         *string     `json:"endTime,omitempty"`
 	SuiteRuns       []*SuiteRun `json:"suite_runs" gorm:"foreignKey:TestRunID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+}
+
+type TestRunConnection struct {
+	Edges      []*TestRunEdge `json:"edges"`
+	PageInfo   *PageInfo      `json:"pageInfo"`
+	TotalCount int            `json:"totalCount"`
+}
+
+type TestRunEdge struct {
+	Cursor  string   `json:"cursor"`
+	TestRun *TestRun `json:"testRun"`
 }
 
 type TestRunFilter struct {

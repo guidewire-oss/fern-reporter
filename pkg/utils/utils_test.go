@@ -1,12 +1,14 @@
 package utils_test
 
 import (
-	"github.com/guidewire/fern-reporter/pkg/models"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"encoding/base64"
+	"fmt"
 	"time"
 
+	"github.com/guidewire/fern-reporter/pkg/models"
 	"github.com/guidewire/fern-reporter/pkg/utils"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Utils Test", func() {
@@ -139,4 +141,78 @@ var _ = Describe("Utils Test", func() {
 			})
 		})
 	})
+
+	Describe("EncodeCursor", func() {
+		Context("when called with a positive offset", func() {
+			It("should return the correct base64-encoded string", func() {
+				offset := 5
+				expected := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("cursor%d", offset)))
+				result := utils.EncodeCursor(offset)
+				Expect(result).To(Equal(expected))
+			})
+		})
+
+		Context("when called with zero as the offset", func() {
+			It("should return the correct base64-encoded string", func() {
+				offset := 0
+				expected := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("cursor%d", offset)))
+				result := utils.EncodeCursor(offset)
+				Expect(result).To(Equal(expected))
+			})
+		})
+
+		Context("when called with a negative offset", func() {
+			It("should return the correct base64-encoded string", func() {
+				offset := -10
+				expected := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("cursor%d", offset)))
+				result := utils.EncodeCursor(offset)
+				Expect(result).To(Equal(expected))
+			})
+		})
+
+		Context("when called with a large offset", func() {
+			It("should return the correct base64-encoded string", func() {
+				offset := 1234567890
+				expected := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("cursor%d", offset)))
+				result := utils.EncodeCursor(offset)
+				Expect(result).To(Equal(expected))
+			})
+		})
+	})
+
+	Describe("DecodeCursor", func() {
+		Context("when called with a nil cursor", func() {
+			It("should return 0", func() {
+				var cursor *string = nil
+				result := utils.DecodeCursor(cursor)
+				Expect(result).To(Equal(0))
+			})
+		})
+
+		Context("when called with a valid base64-encoded cursor", func() {
+			It("should return the correct offset", func() {
+				offset := 5
+				encodedCursor := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("cursor%d", offset)))
+				result := utils.DecodeCursor(&encodedCursor)
+				Expect(result).To(Equal(offset))
+			})
+		})
+
+		Context("when called with an invalid base64-encoded cursor", func() {
+			It("should return 0", func() {
+				invalidCursor := "invalid_base64_string"
+				result := utils.DecodeCursor(&invalidCursor)
+				Expect(result).To(Equal(0))
+			})
+		})
+
+		Context("when called with a valid base64 string that doesn't match the expected format", func() {
+			It("should return 0", func() {
+				encodedCursor := base64.StdEncoding.EncodeToString([]byte("not_a_cursor_format"))
+				result := utils.DecodeCursor(&encodedCursor)
+				Expect(result).To(Equal(0))
+			})
+		})
+	})
+
 })
