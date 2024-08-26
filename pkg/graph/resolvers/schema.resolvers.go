@@ -17,11 +17,15 @@ func (r *queryResolver) TestRuns(ctx context.Context, first *int, after *string)
 	offset := utils.DecodeCursor(after)
 
 	var testRuns []*modelv2.TestRun
-	r.DB.Offset(offset).Limit(*first).Find(&testRuns)
+	if err := r.DB.Offset(offset).Limit(*first).Find(&testRuns).Error; err != nil {
+		return nil, err
+	}
 
 	// Get the total count of TestRun records.
 	var totalCount int64
-	r.DB.Model(&modelv2.TestRun{}).Count(&totalCount)
+	if err := r.DB.Model(&modelv2.TestRun{}).Count(&totalCount).Error; err != nil {
+		return nil, err
+	}
 
 	edges := make([]*modelv2.TestRunEdge, len(testRuns))
 	for i, run := range testRuns {
@@ -32,7 +36,7 @@ func (r *queryResolver) TestRuns(ctx context.Context, first *int, after *string)
 	}
 
 	pageInfo := &modelv2.PageInfo{
-		HasNextPage:     len(testRuns) == *first,
+		HasNextPage:     len(testRuns) == *first && offset+len(testRuns) < int(totalCount),
 		HasPreviousPage: offset > 0,
 	}
 
