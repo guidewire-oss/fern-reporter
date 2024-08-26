@@ -1,13 +1,15 @@
 package resolvers_test
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/guidewire/fern-reporter/pkg/graph/generated"
 	"github.com/guidewire/fern-reporter/pkg/graph/resolvers"
+	"github.com/guidewire/fern-reporter/pkg/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gorm.io/driver/postgres"
@@ -44,13 +46,19 @@ var _ = AfterEach(func() {
 
 var _ = Describe("Handlers", func() {
 	Context("test testRuns resolver", func() {
-		It("should query db to fetch all test run records", func() {
+		It("should query db to fetch first test run records when pagesize 1 is selected", func() {
 			rows := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
 				AddRow(1, "project 1", "1")
 
-			mock.ExpectQuery("SELECT * FROM \"test_runs\" LIMIT $1").
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1`).
 				WithArgs(1).
 				WillReturnRows(rows)
+
+			// Setup mock for the count query
+			countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
+			// Expectation for the count query
+			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
+				WillReturnRows(countRows)
 
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
@@ -60,7 +68,6 @@ var _ = Describe("Handlers", func() {
 
 			cli := client.New(gqlHandler)
 
-			//t.Run("Test TestRuns Resolver", func(t *testing.T) {
 			query := `
 			query GetTestRuns {
 				  testRuns(first: 1, after: "") {
@@ -69,6 +76,7 @@ var _ = Describe("Handlers", func() {
 					  testRun {
 						id
 						testProjectName
+						testSeed
 					  }
 					}
 					pageInfo {
@@ -82,27 +90,76 @@ var _ = Describe("Handlers", func() {
 				}
 		`
 
-			var resp struct {
+			err := cli.Post(query, &gql_response)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Check if at least one edge is returned before accessing it
+			if len(gql_response.TestRuns.Edges) == 0 {
+				Fail("No test runs returned")
+			}
+
+			Expect(gql_response.TestRuns.TotalCount).To(Equal(1))
+			Expect(gql_response.TestRuns.Edges[0].TestRun.ID).To(Equal(1))
+			Expect(gql_response.TestRuns.Edges[0].TestRun.TestProjectName).To(Equal("project 1"))
+			Expect(gql_response.TestRuns.Edges[0].TestRun.TestSeed).To(Equal(1))
+			Expect(gql_response.TestRuns.TotalCount).To(Equal(1))
+
+		})
+
+		It("should query db to fetch first 2 test run records when pagesize 2 is selected", func() {
+			// Setup mock rows for two records
+			rows := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
+				AddRow(1, "project 1", 1).
+				AddRow(2, "project 2", 2)
+
+			// Setup mock for the count query
+			countRows := sqlmock.NewRows([]string{"count"}).AddRow(2)
+
+			// Expectation for the data query
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1`).
+				WithArgs(2).
+				WillReturnRows(rows)
+
+			// Expectation for the count query
+			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
+				WillReturnRows(countRows)
+
+			queryResolver := &resolvers.Resolver{DB: gormDb}
+
+			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			srv := httptest.NewServer(gqlHandler)
+			defer srv.Close()
+
+			cli := client.New(gqlHandler)
+
+			query := `
+        query GetTestRuns {
+              testRuns(first: 2, after: "") {
+                edges {
+                  cursor
+                  testRun {
+                    id
+                    testProjectName
+                  }
+                }
+                pageInfo {
+                  hasNextPage
+                  hasPreviousPage
+                  startCursor
+                  endCursor
+                }
+                totalCount
+              }
+            }
+    `
+
+			var response struct {
 				TestRuns struct {
 					Edges []struct {
 						Cursor  string `json:"cursor"`
 						TestRun struct {
 							ID              int    `json:"id"`
 							TestProjectName string `json:"testProjectName"`
-							TestSeed        int    `json:"testSeed"`
-							StartTime       string `json:"startTime"`
-							EndTime         string `json:"endTime"`
-							SuiteRuns       []struct {
-								ID        int    `json:"id"`
-								SuiteName string `json:"suiteName"`
-								StartTime string `json:"startTime"`
-								EndTime   string `json:"endTime"`
-								SpecRuns  []struct {
-									ID              int    `json:"id"`
-									SpecDescription string `json:"specDescription"`
-									Status          string `json:"status"`
-								} `json:"specRuns"`
-							} `json:"suiteRuns"`
 						} `json:"testRun"`
 					} `json:"edges"`
 					PageInfo struct {
@@ -115,20 +172,264 @@ var _ = Describe("Handlers", func() {
 				} `json:"testRuns"`
 			}
 
-			err := cli.Post(query, &resp)
+			err := cli.Post(query, &response)
 			Expect(err).NotTo(HaveOccurred())
 
-			//Expect(len(resp.TestRuns.Edges)).To(Equal(1))
-			//Expect(resp.TestRuns.Edges[0].TestRun.ID).To(Equal(1))
-			//Expect(resp.TestRuns.Edges[0].TestRun.TestProjectName).To(Equal("project 1"))
-			//Expect(resp.TestRuns.Edges[0].TestRun.TestSeed).To(Equal(1))
+			// Check if the responseonse contains the correct number of records
+			Expect(len(response.TestRuns.Edges)).To(Equal(2))
+
+			// Verify the first record
+			Expect(response.TestRuns.Edges[0].TestRun.ID).To(Equal(1))
+			Expect(response.TestRuns.Edges[0].TestRun.TestProjectName).To(Equal("project 1"))
+
+			// Verify the second record
+			Expect(response.TestRuns.Edges[1].TestRun.ID).To(Equal(2))
+			Expect(response.TestRuns.Edges[1].TestRun.TestProjectName).To(Equal("project 2"))
+
+			// Verify pagination info
+			Expect(response.TestRuns.TotalCount).To(Equal(2))
+			Expect(response.TestRuns.PageInfo.HasNextPage).To(BeFalse())
+			Expect(response.TestRuns.PageInfo.HasPreviousPage).To(BeFalse())
 		})
+
+		It("should return no test run records when pagesize 0 is selected", func() {
+			// Setup mock rows for no records
+			rows := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"})
+
+			// Setup mock for the count query
+			countRows := sqlmock.NewRows([]string{"count"}).AddRow(0)
+
+			// Expectation for the data query
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1`).
+				WithArgs(0).
+				WillReturnRows(rows)
+
+			// Expectation for the count query
+			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
+				WillReturnRows(countRows)
+
+			queryResolver := &resolvers.Resolver{DB: gormDb}
+
+			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			srv := httptest.NewServer(gqlHandler)
+			defer srv.Close()
+
+			cli := client.New(gqlHandler)
+
+			query := `
+        query GetTestRuns {
+              testRuns(first: 0, after: "") { 
+                edges {
+                  cursor
+                  testRun {
+                    id
+                    testProjectName
+                  }
+                }
+                pageInfo {
+                  hasNextPage
+                  hasPreviousPage
+                  startCursor
+                  endCursor
+                }
+                totalCount
+              }
+            }
+    `
+
+			err := cli.Post(query, &gql_response)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify that there are no records
+			Expect(len(gql_response.TestRuns.Edges)).To(Equal(0))
+
+			// Verify pagination info
+			Expect(gql_response.TestRuns.TotalCount).To(Equal(0))
+			Expect(gql_response.TestRuns.PageInfo.HasNextPage).To(BeFalse())
+			Expect(gql_response.TestRuns.PageInfo.HasPreviousPage).To(BeFalse())
+			Expect(gql_response.TestRuns.PageInfo.StartCursor).To(BeEmpty())
+			Expect(gql_response.TestRuns.PageInfo.EndCursor).To(BeEmpty())
+		})
+
+		It("should return all test run records when pagesize is larger than available records", func() {
+			rows := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
+				AddRow(1, "project 1", 1).
+				AddRow(2, "project 2", 2).
+				AddRow(3, "project 3", 3)
+
+			countRows := sqlmock.NewRows([]string{"count"}).AddRow(3)
+
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1`).
+				WithArgs(5).
+				WillReturnRows(rows)
+
+			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
+				WillReturnRows(countRows)
+
+			queryResolver := &resolvers.Resolver{DB: gormDb}
+
+			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			srv := httptest.NewServer(gqlHandler)
+			defer srv.Close()
+
+			cli := client.New(gqlHandler)
+
+			query := `
+        query GetTestRuns {
+              testRuns(first: 5, after: "") {
+                edges {
+                  cursor
+                  testRun {
+                    id
+                    testProjectName
+                  }
+                }
+                pageInfo {
+                  hasNextPage
+                  hasPreviousPage
+                  startCursor
+                  endCursor
+                }
+                totalCount
+              }
+            }
+    `
+			err := cli.Post(query, &gql_response)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify all records are returned
+			Expect(len(gql_response.TestRuns.Edges)).To(Equal(3))
+
+			// Verify pagination info
+			Expect(gql_response.TestRuns.TotalCount).To(Equal(3))
+			Expect(gql_response.TestRuns.PageInfo.HasNextPage).To(BeFalse())
+			Expect(gql_response.TestRuns.PageInfo.HasPreviousPage).To(BeFalse())
+			Expect(gql_response.TestRuns.PageInfo.StartCursor).To(Equal(gql_response.TestRuns.Edges[0].Cursor))
+			Expect(gql_response.TestRuns.PageInfo.EndCursor).To(Equal(gql_response.TestRuns.Edges[2].Cursor))
+		})
+
+		It("should return correct records when good values of first and after are provided - total 5 records", func() {
+			queryResolver := &resolvers.Resolver{DB: gormDb}
+			ctx := context.Background()
+			first := 2
+			after := utils.EncodeCursor(2) // Assuming the offset is 2
+
+			// Expected test data
+			totalCount := int64(5)
+
+			testRuns := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
+				AddRow(3, "project 3", 3).
+				AddRow(4, "project 4", 4)
+
+			// Mocking the expected SQL queries and results in the correct order
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1 OFFSET \$2`).
+				WithArgs(first, 2). // first=2, after=2 means starting from 3rd record
+				WillReturnRows(testRuns)
+
+			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
+				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(totalCount))
+
+			// Execute the resolver function
+			result, err := queryResolver.Query().TestRuns(ctx, &first, &after)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Validate the results
+			Expect(result.Edges).To(HaveLen(2))
+			Expect(result.Edges[0].Cursor).To(Equal(utils.EncodeCursor(3)))
+			Expect(result.Edges[1].Cursor).To(Equal(utils.EncodeCursor(4)))
+			Expect(result.PageInfo.HasNextPage).To(BeTrue())
+			Expect(result.PageInfo.HasPreviousPage).To(BeTrue())
+			Expect(result.TotalCount).To(Equal(int(totalCount)))
+
+			// Ensure all expectations were met
+			err = mock.ExpectationsWereMet()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return correct records when good values of first and after are provided - total 3 records", func() {
+			queryResolver := &resolvers.Resolver{DB: gormDb}
+			ctx := context.Background()
+			first := 1
+			after := utils.EncodeCursor(2) // Assuming the offset is 2
+
+			// Expected test data
+			totalCount := int64(3)
+
+			testRuns := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
+				AddRow(3, "project 3", 3)
+
+			// Mocking the expected SQL queries and results in the correct order
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1 OFFSET \$2`).
+				WithArgs(first, 2). // first=1, after=2 means starting from 3rd record
+				WillReturnRows(testRuns)
+
+			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
+				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(totalCount))
+
+			// Execute the resolver function
+			result, err := queryResolver.Query().TestRuns(ctx, &first, &after)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Validate the results
+			Expect(result.Edges).To(HaveLen(1))
+			Expect(result.Edges[0].Cursor).To(Equal(utils.EncodeCursor(3)))
+			Expect(result.PageInfo.HasNextPage).To(BeFalse())
+			Expect(result.PageInfo.HasPreviousPage).To(BeTrue())
+			Expect(result.TotalCount).To(Equal(int(totalCount)))
+
+			// Ensure all expectations were met
+			err = mock.ExpectationsWereMet()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return an error when fetching TestRun records fails", func() {
+			queryResolver := &resolvers.Resolver{DB: gormDb}
+			testFirst := 3
+			testAfter := ""
+			ctx := context.Background()
+			// Mock the query to fetch test runs with an error
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" .*`).
+				WillReturnError(errors.New("database error when fetching test_runs"))
+
+			// Act: Call the TestRuns method
+			_, err := queryResolver.Query().TestRuns(ctx, &testFirst, &testAfter)
+
+			// Assert: Verify that an error occurred and it contains the correct message
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("database error"))
+		})
+
+		It("should return an error when fetching the total count of TestRun records fails", func() {
+			// Arrange: Setup the resolver and mock context
+			queryResolver := &resolvers.Resolver{DB: gormDb} // Assuming your resolver structure
+			testFirst := 3
+			testAfter := ""
+			ctx := context.Background()
+
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" .*`).
+				WillReturnRows(sqlmock.NewRows([]string{"id", "test_project_name"}).
+					AddRow(1, "Project A").
+					AddRow(2, "Project B").
+					AddRow(3, "Project C"))
+
+			// Mock the query to fetch total count with an error
+			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
+				WillReturnError(errors.New("database error when fetching total count"))
+
+			// Act: Call the TestRuns method
+			_, err := queryResolver.Query().TestRuns(ctx, &testFirst, &testAfter)
+
+			// Assert: Verify that an error occurred and it contains the correct message
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("database error when fetching total count"))
+		})
+
 	})
 
 	Context("test testRun resolver", func() {
 		It("should query db to fetch test run record", func() {
 			testRunRows := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
-				AddRow(1, "project 1", "1")
+				AddRow(1, "project 1", 1)
 
 			suiteRows := sqlmock.NewRows([]string{"ID", "TestRunID", "SuiteName"}).
 				AddRow(1, 1, "suite 1")
@@ -169,8 +470,8 @@ var _ = Describe("Handlers", func() {
 				}
 			  }
 			}`
-			// Response struct
-			var resp struct {
+			// responseonse struct
+			var response struct {
 				TestRun []struct {
 					ID              int
 					TestProjectName string
@@ -185,16 +486,16 @@ var _ = Describe("Handlers", func() {
 				}
 			}
 
-			err := cli.Post(query, &resp)
+			err := cli.Post(query, &response)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(resp.TestRun[0].ID).To(Equal(1))
-			Expect(resp.TestRun[0].TestProjectName).To(Equal("project 1"))
-			Expect(resp.TestRun[0].TestSeed).To(Equal(1))
-			Expect(len(resp.TestRun[0].SuiteRuns)).To(Equal(1))
-			Expect(resp.TestRun[0].SuiteRuns[0].ID).To(Equal(1))
-			Expect(resp.TestRun[0].SuiteRuns[0].TestRunID).To(Equal(1))
-			Expect(resp.TestRun[0].SuiteRuns[0].SuiteName).To(Equal("suite 1"))
+			Expect(response.TestRun[0].ID).To(Equal(1))
+			Expect(response.TestRun[0].TestProjectName).To(Equal("project 1"))
+			Expect(response.TestRun[0].TestSeed).To(Equal(1))
+			Expect(len(response.TestRun[0].SuiteRuns)).To(Equal(1))
+			Expect(response.TestRun[0].SuiteRuns[0].ID).To(Equal(1))
+			Expect(response.TestRun[0].SuiteRuns[0].TestRunID).To(Equal(1))
+			Expect(response.TestRun[0].SuiteRuns[0].SuiteName).To(Equal("suite 1"))
 		})
 	})
 
@@ -234,8 +535,8 @@ var _ = Describe("Handlers", func() {
             }
         `
 
-			// Define the response struct to unmarshal the GraphQL response
-			var resp struct {
+			// Define the responseonse struct to unmarshal the GraphQL responseonse
+			var response struct {
 				TestRunByID struct {
 					ID              int
 					TestProjectName string
@@ -243,21 +544,40 @@ var _ = Describe("Handlers", func() {
 				}
 			}
 
-			// Execute the GraphQL query and unmarshal the response into the resp struct
-			err := cli.Post(query, &resp)
+			// Execute the GraphQL query and unmarshal the responseonse into the gql_response struct
+			err := cli.Post(query, &response)
 
-			fmt.Print(resp)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify the response fields match the expected values
-			Expect(resp.TestRunByID.ID).To(Equal(1))
-			Expect(resp.TestRunByID.TestProjectName).To(Equal("project 1"))
-			Expect(resp.TestRunByID.TestSeed).To(Equal(1))
+			// Verify the responseonse fields match the expected values
+			Expect(response.TestRunByID.ID).To(Equal(1))
+			Expect(response.TestRunByID.TestProjectName).To(Equal("project 1"))
+			Expect(response.TestRunByID.TestSeed).To(Equal(1))
 
-			Expect(resp.TestRunByID.ID).ToNot(Equal(2))
-			Expect(resp.TestRunByID.TestProjectName).ToNot(Equal("project 2"))
-			Expect(resp.TestRunByID.TestSeed).ToNot(Equal(2))
+			Expect(response.TestRunByID.ID).ToNot(Equal(2))
+			Expect(response.TestRunByID.TestProjectName).ToNot(Equal("project 2"))
+			Expect(response.TestRunByID.TestSeed).ToNot(Equal(2))
 		})
 	})
 
 })
+
+var gql_response struct {
+	TestRuns struct {
+		Edges []struct {
+			Cursor  string `json:"cursor"`
+			TestRun struct {
+				ID              int    `json:"id"`
+				TestProjectName string `json:"testProjectName"`
+				TestSeed        int    `json:"testSeed"`
+			} `json:"testRun"`
+		} `json:"edges"`
+		PageInfo struct {
+			HasNextPage     bool   `json:"hasNextPage"`
+			HasPreviousPage bool   `json:"hasPreviousPage"`
+			StartCursor     string `json:"startCursor"`
+			EndCursor       string `json:"endCursor"`
+		} `json:"pageInfo"`
+		TotalCount int `json:"totalCount"`
+	} `json:"testRuns"`
+}
