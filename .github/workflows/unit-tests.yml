@@ -33,6 +33,9 @@ jobs:
         run: |
           go install github.com/onsi/ginkgo/v2/ginkgo
 
+      - name: Run go mod tidy
+        run: go mod tidy
+
       - name: Run Make test
         run: make test
 
