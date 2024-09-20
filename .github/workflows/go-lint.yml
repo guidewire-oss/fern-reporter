@@ -19,6 +19,14 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      - uses: evantorrie/mott-the-tidier@v1-beta
+        with:
+          gomods: |
+            **/go.mod
+            -tools/go.mod
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Auto-fix go.sum discrepancies
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
