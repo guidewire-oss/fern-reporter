@@ -251,7 +251,8 @@
             })
             .then(data => {
               console.log('Success:', data);
-              // Handle the response data here
+              document.getElementById('geminiInsightsContent').textContent = data.insights;
+              document.getElementById('geminiInsightsModal').style.display = 'block';
             })
             .catch(error => {
               console.error('Error:', error);
@@ -259,6 +260,20 @@
             });
           });
         });
+
+        // Close modal when clicking on the close button or outside the modal
+        const modal = document.getElementById('geminiInsightsModal');
+        const closeBtn = document.querySelector('.close');
+
+        closeBtn.onclick = function() {
+          modal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+          if (event.target == modal) {
+            modal.style.display = 'none';
+          }
+        }
       });
     </script>
   </body>

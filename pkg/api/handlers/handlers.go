@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -249,58 +248,52 @@ func (h *Handler) Ping(c *gin.Context) {
 }
 
 func (h *Handler) GetGeminiInsights(c *gin.Context) {
-	var testRunData struct {
-		ProjectName string `json:"projectName"`
-		TestName    string `json:"testName"`
-		Status      string `json:"status"`
-		Duration    string `json:"duration"`
-	}
+    var testRunData struct {
+        ProjectName string `json:"projectName"`
+        TestName    string `json:"testName"`
+        Status      string `json:"status"`
+        Duration    string `json:"duration"`
+    }
 
-	if err := c.ShouldBindJSON(&testRunData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
-		return
-	}
+    if err := c.ShouldBindJSON(&testRunData); err != nil {
+        log.Printf("Error binding JSON: %v", err)
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+        return
+    }
 
-	prompt := fmt.Sprintf("Analyze this test run data and provide insights:\nProject: %s\nTest: %s\nStatus: %s\nDuration: %s",
-		testRunData.ProjectName, testRunData.TestName, testRunData.Status, testRunData.Duration)
+    prompt := fmt.Sprintf("Analyze this test run data and provide insights:\nProject: %s\nTest: %s\nStatus: %s\nDuration: %s",
+        testRunData.ProjectName, testRunData.TestName, testRunData.Status, testRunData.Duration)
 
-	response, err := callGeminiAPI(prompt)
-	if err != nil {
-		if errors.Is(err, ErrGeminiAPIKeyNotSet) {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gemini API key is not set"})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get insights from Gemini"})
-		}
-		return
-	}
+    response, err := callGeminiAPI(prompt)
+    if err != nil {
+        log.Printf("Error calling Gemini API: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get insights from Gemini: %v", err)})
+        return
+    }
 
-	c.JSON(http.StatusOK, gin.H{"insights": response})
+    c.JSON(http.StatusOK, gin.H{"insights": response})
 }
 
-var ErrGeminiAPIKeyNotSet = errors.New("Gemini API key is not set")
-
 func callGeminiAPI(prompt string) (string, error) {
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	if apiKey == "" {
-		log.Println("Gemini API key is not set")
-		return "", ErrGeminiAPIKeyNotSet
-	}
+    apiKey := "AIzaSyA7Djpfu1U2UQjk1pdfSl99ZE0j7OnF_zg"
+    if apiKey == "" {
+        return "", fmt.Errorf("gemini API key is not set")
+    }
 
-	ctx := context.Background()
-	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
-	if err != nil {
-		return "", fmt.Errorf("failed to create client: %v", err)
-	}
-	defer client.Close()
+    ctx := context.Background()
+    client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+    if err != nil {
+        return "", fmt.Errorf("failed to create Gemini client: %v", err)
+    }
+    defer client.Close()
 
-	model := client.GenerativeModel("gemini-pro")
-	response, err := model.GenerateContent(ctx, genai.Text(prompt))
-	if err != nil {
-		log.Printf("Error generating content: %v", err)
-		return "", fmt.Errorf("failed to generate content: %v", err)
-	}
+    model := client.GenerativeModel("gemini-pro")
+    response, err := model.GenerateContent(ctx, genai.Text(prompt))
+    if err != nil {
+        return "", fmt.Errorf("failed to generate content: %v", err)
+    }
 
-	return printResponse(response), nil
+    return printResponse(response), nil
 }
 
 func printResponse(resp *genai.GenerateContentResponse) string {
