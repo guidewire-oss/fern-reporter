@@ -66,6 +66,6 @@ func RegisterRouters(router *gin.Engine) {
 	insights := router.Group("/insights")
 	{
 		insights.GET("/:name", handler.ReportTestInsights)
-		insights.POST("/gemini", handler.GetGeminiInsights) // Add this new route
+		insights.POST("/gemini", handler.GetGeminiInsights)
 	}
 }

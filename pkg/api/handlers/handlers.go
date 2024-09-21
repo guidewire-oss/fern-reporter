@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -275,7 +276,7 @@ func (h *Handler) GetGeminiInsights(c *gin.Context) {
 }
 
 func callGeminiAPI(prompt string) (string, error) {
-    apiKey := "AIzaSyA7Djpfu1U2UQjk1pdfSl99ZE0j7OnF_zg"
+    apiKey := os.Getenv("GEMINI_API_KEY")
     if apiKey == "" {
         return "", fmt.Errorf("gemini API key is not set")
     }
