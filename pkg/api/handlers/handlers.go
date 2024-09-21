@@ -1,20 +1,24 @@
 package handlers
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
-
-	"github.com/guidewire/fern-reporter/config"
-	"github.com/guidewire/fern-reporter/pkg/models"
-	"github.com/guidewire/fern-reporter/pkg/utils"
-
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/generative-ai-go/genai"
+	"google.golang.org/api/option"
 	"gorm.io/gorm"
+
+	"github.com/guidewire/fern-reporter/config"
+	"github.com/guidewire/fern-reporter/pkg/models"
+	"github.com/guidewire/fern-reporter/pkg/utils"
 )
 
 type Handler struct {
@@ -242,4 +246,71 @@ func (h *Handler) Ping(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "Fern Reporter is running!",
 	})
+}
+
+func (h *Handler) GetGeminiInsights(c *gin.Context) {
+	var testRunData struct {
+		ProjectName string `json:"projectName"`
+		TestName    string `json:"testName"`
+		Status      string `json:"status"`
+		Duration    string `json:"duration"`
+	}
+
+	if err := c.ShouldBindJSON(&testRunData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	prompt := fmt.Sprintf("Analyze this test run data and provide insights:\nProject: %s\nTest: %s\nStatus: %s\nDuration: %s",
+		testRunData.ProjectName, testRunData.TestName, testRunData.Status, testRunData.Duration)
+
+	response, err := callGeminiAPI(prompt)
+	if err != nil {
+		if errors.Is(err, ErrGeminiAPIKeyNotSet) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gemini API key is not set"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get insights from Gemini"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"insights": response})
+}
+
+var ErrGeminiAPIKeyNotSet = errors.New("Gemini API key is not set")
+
+func callGeminiAPI(prompt string) (string, error) {
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		log.Println("Gemini API key is not set")
+		return "", ErrGeminiAPIKeyNotSet
+	}
+
+	ctx := context.Background()
+	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	if err != nil {
+		return "", fmt.Errorf("failed to create client: %v", err)
+	}
+	defer client.Close()
+
+	model := client.GenerativeModel("gemini-pro")
+	response, err := model.GenerateContent(ctx, genai.Text(prompt))
+	if err != nil {
+		log.Printf("Error generating content: %v", err)
+		return "", fmt.Errorf("failed to generate content: %v", err)
+	}
+
+	return printResponse(response), nil
+}
+
+func printResponse(resp *genai.GenerateContentResponse) string {
+	var buf bytes.Buffer
+	for _, cand := range resp.Candidates {
+		if cand.Content != nil {
+			for _, part := range cand.Content.Parts {
+				fmt.Fprintln(&buf, part)
+			}
+		}
+	}
+	return buf.String()
 }
