@@ -1,5 +1,5 @@
 # Build stage
-FROM --platform=${BUILDPLATFORM} golang:1.21-alpine AS build-env
+FROM --platform=${BUILDPLATFORM} golang:1.23-alpine AS build-env
 
 # Set up arguments for multi-architecture support
 ARG TARGETOS
