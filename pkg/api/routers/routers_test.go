@@ -71,13 +71,13 @@ var _ = Describe("RegisterRouters", func() {
 	})
 
 	Context("Registering routes with auth", func() {
-		os.Setenv("AUTH_ENABLED", "true")
-		config.LoadConfig()
-
 		It("should register API routes", func() {
 			handler := handlers.NewHandler(gormDb)
 
 			routers.RegisterRouters(router)
+
+			os.Setenv("AUTH_ENABLED", "true")
+			config.LoadConfig()
 
 			Expect(router).NotTo(BeNil())
 
@@ -93,6 +93,9 @@ var _ = Describe("RegisterRouters", func() {
 			handler := handlers.NewHandler(gormDb)
 
 			routers.RegisterRouters(router)
+
+			os.Setenv("AUTH_ENABLED", "true")
+			config.LoadConfig()
 
 			Expect(router).NotTo(BeNil())
 
