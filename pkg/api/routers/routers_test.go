@@ -77,7 +77,8 @@ var _ = Describe("RegisterRouters", func() {
 			routers.RegisterRouters(router)
 
 			os.Setenv("AUTH_ENABLED", "true")
-			config.LoadConfig()
+			_, err := config.LoadConfig()
+			Expect(err).NotTo(HaveOccurred())
 
 			Expect(router).NotTo(BeNil())
 
@@ -95,7 +96,8 @@ var _ = Describe("RegisterRouters", func() {
 			routers.RegisterRouters(router)
 
 			os.Setenv("AUTH_ENABLED", "true")
-			config.LoadConfig()
+			_, err := config.LoadConfig()
+			Expect(err).NotTo(HaveOccurred())
 
 			Expect(router).NotTo(BeNil())
 
