@@ -1,0 +1,31 @@
+version: '3.9'
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    shm_size: 128mb
+    environment:
+      POSTGRES_DB: fern
+      POSTGRES_USER: fern
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - 5432:5432
+
+  pgadmin:
+    image: dpage/pgadmin4:8.11.0
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pgadmin@mycomp.com
+      PGADMIN_DEFAULT_PASSWORD: secret
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    depends_on:
+      - postgres
+    user: root
+    ports:
+      - 5050:80
+    volumes:
+      - ./docker/servers.json:/pgadmin4/servers.json

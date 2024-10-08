@@ -25,6 +25,23 @@ Key Features:
 4. **Coverage and Test Evolution Analysis (To be implemented)**: Planned feature to offer insights into test coverage and the evolution of tests over time.
 5. **Authorized Access to Test Reports (To be implemented)**: Upcoming feature to ensure secure access to test reports.
 
+## Local Development
+
+To start developing locally first run the below docker compose command:
+```bash
+docker-compose up -d
+```
+Then install necessary modules:
+```bash
+go mod tidy
+```
+Now run the server with:
+```bash
+go run main.go
+```
+
+GraphiQL should be available at http://localhost:8080.
+
 ## Installation and Setup
 
 Fern is a Golang Gin-based API that connects to a PostgreSQL database. It is designed to store metadata about Ginkgo test suites and has two main components:
