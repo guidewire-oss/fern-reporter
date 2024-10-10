@@ -46,6 +46,15 @@ type TestRunInsight struct {
 	PassRate        float32   `json:"pass_rate"`
 }
 
+type TestSummary struct {
+	SuiteRunID           uint
+	TestProjectName      string
+	StartTime            time.Time
+	TotalPassedSpecRuns  int64
+	TotalSkippedSpecRuns int64
+	TotalSpecRuns        int64
+}
+
 type Tag struct {
 	ID   uint64 `json:"id" gorm:"primaryKey"`
 	Name string `json:"name"`

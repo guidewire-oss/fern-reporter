@@ -34,9 +34,11 @@ func RegisterRouters(router *gin.Engine) {
 		testRun.PUT("/:id", handler.UpdateTestRun)
 		testRun.DELETE("/:id", handler.DeleteTestRun)
 
-		testReport := api.Group("/reports/testruns")
-		testReport.GET("/", handler.ReportTestRunAll)
-		testReport.GET("/:id", handler.ReportTestRunById)
+		testReport := api.Group("/reports")
+		testReport.GET("/projects/", handler.GetProjectAll)
+		testReport.GET("/summary/:name/", handler.GetTestSummary)
+		testReport.GET("/testruns/", handler.ReportTestRunAll)
+		testReport.GET("/testruns/:id/", handler.ReportTestRunById)
 	}
 
 	var reports *gin.RouterGroup
