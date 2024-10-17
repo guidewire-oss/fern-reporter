@@ -19,7 +19,13 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      - name: Run go get ./...
+        run: go get ./...
+      - name: Run go mod tidy
+        run: go mod tidy
+      - name: Run go mod download
+        run: go mod download
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.54
+          version: v1.61.0
