@@ -6,3 +6,6 @@ coverage:
     patch:
       default:
         target: 70%
+  ignore:
+    - "pkg/graph/gen/*"
+    - "pkg/graph/generated/*"
