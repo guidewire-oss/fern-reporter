@@ -3,6 +3,8 @@ package utils
 import (
 	"github.com/guidewire/fern-reporter/pkg/models"
 	"time"
+	"encoding/base64"
+	"fmt"
 )
 
 const (
@@ -39,4 +41,20 @@ func CalculateTestMetrics(testRuns []models.TestRun) (totalTests, executedTests,
 		}
 	}
 	return
+}
+
+func EncodeCursor(offset int) string {
+	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("cursor%d", offset)))
+}
+func DecodeCursor(cursor *string) int {
+	if cursor == nil {
+		return 0
+	}
+	decoded, _ := base64.StdEncoding.DecodeString(*cursor)
+	var offset int
+	_, err := fmt.Sscanf(string(decoded), "cursor%d", &offset)
+	if err != nil {
+		return 0
+	}
+	return offset
 }
