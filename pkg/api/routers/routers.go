@@ -1,12 +1,12 @@
 package routers
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
-
-	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -68,5 +68,6 @@ func RegisterRouters(router *gin.Engine) {
 	insights := router.Group("/insights")
 	{
 		insights.GET("/:name", handler.ReportTestInsights)
+		insights.POST("/gemini", handler.GetGeminiInsights)
 	}
 }
