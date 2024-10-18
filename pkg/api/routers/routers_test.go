@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
+	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"os"
 	"reflect"
 	"runtime"
 )
@@ -59,6 +61,43 @@ var _ = Describe("RegisterRouters", func() {
 			handler := handlers.NewHandler(gormDb)
 
 			routers.RegisterRouters(router)
+
+			Expect(router).NotTo(BeNil())
+
+			// Check if report routes are registered correctly
+			ExpectRoute(router, "GET", "/reports/testruns/", handler.ReportTestRunAllHTML)
+			ExpectRoute(router, "GET", "/reports/testruns/:id", handler.ReportTestRunByIdHTML)
+		})
+	})
+
+	Context("Registering routes with auth", func() {
+		It("should register API routes", func() {
+			handler := handlers.NewHandler(gormDb)
+
+			routers.RegisterRouters(router)
+
+			os.Setenv("AUTH_ENABLED", "true")
+			_, err := config.LoadConfig()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(router).NotTo(BeNil())
+
+			// Check if API routes are registered correctly
+			ExpectRoute(router, "GET", "/api/testrun/", handler.GetTestRunAll)
+			ExpectRoute(router, "GET", "/api/testrun/:id", handler.GetTestRunByID)
+			ExpectRoute(router, "POST", "/api/testrun/", handler.CreateTestRun)
+			ExpectRoute(router, "PUT", "/api/testrun/:id", handler.UpdateTestRun)
+			ExpectRoute(router, "DELETE", "/api/testrun/:id", handler.DeleteTestRun)
+		})
+
+		It("should register report routes", func() {
+			handler := handlers.NewHandler(gormDb)
+
+			routers.RegisterRouters(router)
+
+			os.Setenv("AUTH_ENABLED", "true")
+			_, err := config.LoadConfig()
+			Expect(err).NotTo(HaveOccurred())
 
 			Expect(router).NotTo(BeNil())
 

@@ -15,6 +15,7 @@ You can load configuration values using the `config.yaml` or environment variabl
 Ensure the following environment variables are set or set a default values in `config.yaml`:
 - `SCOPE_CLAIM_NAME`: Name of the claim used for scopes.
 - `AUTH_JSON_WEB_KEYS_ENDPOINT`: URL of the JWKS endpoint.
+- `AUTH_ENABLED`: Used to determine if authentication is required or not (defaults to false).
 
 ### Configuration Files
 Load necessary configurations using `config.yaml`.
