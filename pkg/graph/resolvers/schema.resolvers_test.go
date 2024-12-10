@@ -62,7 +62,7 @@ var _ = Describe("Handlers", func() {
 
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
-			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -126,7 +126,7 @@ var _ = Describe("Handlers", func() {
 
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
-			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -210,7 +210,7 @@ var _ = Describe("Handlers", func() {
 
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
-			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -268,7 +268,7 @@ var _ = Describe("Handlers", func() {
 
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
-			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -451,7 +451,7 @@ var _ = Describe("Handlers", func() {
 
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
-			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -515,7 +515,7 @@ var _ = Describe("Handlers", func() {
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
 			// Create a new GraphQL handler with the resolver
-			gqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
 
 			// Create a new HTTP test server with the GraphQL handler
 			srv := httptest.NewServer(gqlHandler)
