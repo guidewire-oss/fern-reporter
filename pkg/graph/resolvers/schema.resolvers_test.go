@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/99designs/gqlgen/client"
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/guidewire/fern-reporter/pkg/graph/generated"
 	"github.com/guidewire/fern-reporter/pkg/graph/resolvers"
@@ -63,6 +64,9 @@ var _ = Describe("Handlers", func() {
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
 			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			// Add transports for POST requests
+			gqlHandler.AddTransport(transport.POST{})
+
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -127,6 +131,10 @@ var _ = Describe("Handlers", func() {
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
 			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+
+			// Add transports for POST requests
+			gqlHandler.AddTransport(transport.POST{})
+
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -211,6 +219,9 @@ var _ = Describe("Handlers", func() {
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
 			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			// Add transports for POST requests
+			gqlHandler.AddTransport(transport.POST{})
+
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -269,6 +280,9 @@ var _ = Describe("Handlers", func() {
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
 			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			// Add transports for POST requests
+			gqlHandler.AddTransport(transport.POST{})
+
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -452,6 +466,9 @@ var _ = Describe("Handlers", func() {
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
 			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			// Add transports for POST requests
+			gqlHandler.AddTransport(transport.POST{})
+
 			srv := httptest.NewServer(gqlHandler)
 			defer srv.Close()
 
@@ -516,6 +533,8 @@ var _ = Describe("Handlers", func() {
 
 			// Create a new GraphQL handler with the resolver
 			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
+			// Add transports for POST requests
+			gqlHandler.AddTransport(transport.POST{})
 
 			// Create a new HTTP test server with the GraphQL handler
 			srv := httptest.NewServer(gqlHandler)
