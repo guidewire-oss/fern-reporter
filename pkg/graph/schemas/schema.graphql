@@ -38,7 +38,7 @@ input TestRunFilter {
 }
 
 type Query {
-  testRuns(first: Int, after: String): TestRunConnection!
+  testRuns(first: Int, after: String, desc: Boolean): TestRunConnection!
   testRun(testRunFilter: TestRunFilter!): [TestRun!]!
   testRunById(id: Int!): TestRun
 }
