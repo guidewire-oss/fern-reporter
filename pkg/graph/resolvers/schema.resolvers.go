@@ -22,7 +22,7 @@ func (r *queryResolver) TestRuns(ctx context.Context, first *int, after *string,
 	}
 
 	var testRuns []*modelv2.TestRun
-	if err := r.DB.Preload("SuiteRuns.SpecRuns").Offset(offset).Limit(*first).Order(order).Find(&testRuns).Error; err != nil {
+	if err := r.DB.Preload("SuiteRuns.SpecRuns.Tags").Offset(offset).Limit(*first).Order(order).Find(&testRuns).Error; err != nil {
 		return nil, err
 	}
 
@@ -61,14 +61,14 @@ func (r *queryResolver) TestRuns(ctx context.Context, first *int, after *string,
 // TestRun is the resolver for the testRun field.
 func (r *queryResolver) TestRun(ctx context.Context, testRunFilter modelv2.TestRunFilter) ([]*modelv2.TestRun, error) {
 	var testRuns []*modelv2.TestRun
-	r.DB.Preload("SuiteRuns.SpecRuns").Where("id = ?", testRunFilter.ID).Where("test_project_name = ?", testRunFilter.TestProjectName).Find(&testRuns)
+	r.DB.Preload("SuiteRuns.SpecRuns.Tags").Where("id = ?", testRunFilter.ID).Where("test_project_name = ?", testRunFilter.TestProjectName).Find(&testRuns)
 	return testRuns, nil
 }
 
 // TestRunByID is the resolver for the testRunById field.
 func (r *queryResolver) TestRunByID(ctx context.Context, id int) (*modelv2.TestRun, error) {
 	var testRun *modelv2.TestRun
-	r.DB.Preload("SuiteRuns.SpecRuns").Where("id = ?", id).First(&testRun)
+	r.DB.Preload("SuiteRuns.SpecRuns.Tags").Where("id = ?", id).First(&testRun)
 
 	return testRun, nil
 }
