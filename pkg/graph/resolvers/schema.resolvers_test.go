@@ -17,6 +17,7 @@ import (
 	"gorm.io/gorm"
 	"net/http/httptest"
 	"regexp"
+	"time"
 )
 
 var (
@@ -48,19 +49,45 @@ var _ = AfterEach(func() {
 var _ = Describe("Handlers", func() {
 	Context("test testRuns resolver", func() {
 		It("should query db to fetch first test run records when pagesize 1 is selected", func() {
+			// Mock the test run rows
 			rows := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
 				AddRow(1, "project 1", "1")
 
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1`).
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" ORDER BY id ASC LIMIT \$1`).
 				WithArgs(1).
 				WillReturnRows(rows)
 
-			// Setup mock for the count query
+			suiteRows := sqlmock.NewRows([]string{"ID", "TestRunID", "SuiteName"}).
+				AddRow(1, 1, "suite 1")
+			mock.ExpectQuery(`SELECT \* FROM "suite_runs" WHERE "suite_runs"."test_run_id" = \$1`).
+				WithArgs(1).
+				WillReturnRows(suiteRows)
+
+			// Mock SpecRun rows with tags
+			specRunRows := sqlmock.NewRows([]string{"ID", "SuiteID", "SpecDescription", "Status", "Message", "StartTime", "EndTime"}).
+				AddRow(1, 1, "Test Spec", "passed", "No errors", time.Now(), time.Now())
+
+			mock.ExpectQuery(`SELECT \* FROM "spec_runs" WHERE "spec_runs"."suite_id" = \$1`).
+				WithArgs(1).
+				WillReturnRows(specRunRows)
+
+			// Mock the spec_run_tags join table to return tags for SpecRun
+			//tagRows := sqlmock.NewRows([]string{"ID", "Name"}).
+			//	AddRow(1, "tag1").
+			//	AddRow(2, "tag2")
+
+			// Expect a query to fetch tags for the SpecRun
+			//mock.ExpectQuery(`SELECT \* FROM "spec_run_tags" WHERE "spec_run_tags"."spec_run_id" IN (\$1, \$2)`).
+			//	WithArgs(1).
+			//	WithArgs(2).
+			//	WillReturnRows(tagRows)
+
+			// Mock the count query
 			countRows := sqlmock.NewRows([]string{"count"}).AddRow(1)
-			// Expectation for the count query
 			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
 				WillReturnRows(countRows)
 
+			// Setup mock DB and GraphQL resolver
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
 			gqlHandler := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: queryResolver}))
@@ -73,14 +100,31 @@ var _ = Describe("Handlers", func() {
 			cli := client.New(gqlHandler)
 
 			query := `
-			query GetTestRuns {
-				  testRuns(first: 1, after: "") {
+			query getTestRuns {
+				  testRuns(first: 1, after:"" ) {
 					edges {
 					  cursor
 					  testRun {
 						id
 						testProjectName
 						testSeed
+						startTime
+						endTime
+						suiteRuns{
+						  id
+						  suiteName
+						  specRuns{
+							id
+							specDescription
+							status
+							message
+							tags{
+							  id
+							  name
+							}
+						  }
+						}
+					   
 					  }
 					}
 					pageInfo {
@@ -102,11 +146,19 @@ var _ = Describe("Handlers", func() {
 				Fail("No test runs returned")
 			}
 
+			// Check total count and the first test run data
 			Expect(gql_response.TestRuns.TotalCount).To(Equal(1))
 			Expect(gql_response.TestRuns.Edges[0].TestRun.ID).To(Equal(1))
 			Expect(gql_response.TestRuns.Edges[0].TestRun.TestProjectName).To(Equal("project 1"))
-			Expect(gql_response.TestRuns.Edges[0].TestRun.TestSeed).To(Equal(1))
-			Expect(gql_response.TestRuns.TotalCount).To(Equal(1))
+			Expect(gql_response.TestRuns.Edges[0].TestRun.TestSeed).To(Equal((1)))
+
+			//fmt.Print(gql_response.TestRuns.Edges[0])
+			//// Check spec runs and tags
+			//Expect(gql_response.TestRuns.Edges[0].TestRun.SuiteRuns[0].SpecRuns[0].Tags).To(HaveLen(2))
+			//Expect(gql_response.TestRuns.Edges[0].TestRun.SuiteRuns[0].SpecRuns[0].Tags[0].ID).To(Equal(1))
+			//Expect(gql_response.TestRuns.Edges[0].TestRun.SuiteRuns[0].SpecRuns[0].Tags[0].Name).To(Equal("tag1"))
+			//Expect(gql_response.TestRuns.Edges[0].TestRun.SuiteRuns[0].SpecRuns[0].Tags[1].ID).To(Equal(2))
+			//Expect(gql_response.TestRuns.Edges[0].TestRun.SuiteRuns[0].SpecRuns[0].Tags[1].Name).To(Equal("tag2"))
 
 		})
 
@@ -116,15 +168,24 @@ var _ = Describe("Handlers", func() {
 				AddRow(1, "project 1", 1).
 				AddRow(2, "project 2", 2)
 
-			// Setup mock for the count query
-			countRows := sqlmock.NewRows([]string{"count"}).AddRow(2)
-
 			// Expectation for the data query
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1`).
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" ORDER BY id ASC LIMIT \$1`).
 				WithArgs(2).
 				WillReturnRows(rows)
 
-			// Expectation for the count query
+			suiteRows := sqlmock.NewRows([]string{"ID", "TestRunID", "SuiteName"}).
+				AddRow(1, 1, "suite 1")
+			mock.ExpectQuery(`SELECT \* FROM "suite_runs" WHERE "suite_runs"."test_run_id" IN \(\$1,\$2\)`).
+				WithArgs(1, 2).
+				WillReturnRows(suiteRows)
+
+			specRunRows := sqlmock.NewRows([]string{"ID", "SuiteID", "SpecDescription", "Status", "Message", "StartTime", "EndTime"}).
+				AddRow(1, 1, "Test Spec", "passed", "No errors", time.Now(), time.Now())
+			mock.ExpectQuery(`SELECT \* FROM "spec_runs" WHERE "spec_runs"."suite_id" = \$1`).
+				WithArgs(1).
+				WillReturnRows(specRunRows)
+
+			countRows := sqlmock.NewRows([]string{"count"}).AddRow(2)
 			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
 				WillReturnRows(countRows)
 
@@ -183,7 +244,7 @@ var _ = Describe("Handlers", func() {
 			err := cli.Post(query, &response)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Check if the responseonse contains the correct number of records
+			// Check if the response contains the correct number of records
 			Expect(len(response.TestRuns.Edges)).To(Equal(2))
 
 			// Verify the first record
@@ -208,7 +269,7 @@ var _ = Describe("Handlers", func() {
 			countRows := sqlmock.NewRows([]string{"count"}).AddRow(0)
 
 			// Expectation for the data query
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1`).
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" ORDER BY id ASC LIMIT \$1`).
 				WithArgs(0).
 				WillReturnRows(rows)
 
@@ -268,14 +329,26 @@ var _ = Describe("Handlers", func() {
 				AddRow(2, "project 2", 2).
 				AddRow(3, "project 3", 3)
 
-			countRows := sqlmock.NewRows([]string{"count"}).AddRow(3)
-
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1`).
+			mock.ExpectQuery(`SELECT \* FROM "test_runs" ORDER BY id ASC LIMIT \$1`).
 				WithArgs(5).
 				WillReturnRows(rows)
 
-			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
-				WillReturnRows(countRows)
+			suiteRows := sqlmock.NewRows([]string{"ID", "TestRunID", "SuiteName"}).
+				AddRow(1, 1, "suite 1")
+
+			specRows := sqlmock.NewRows([]string{"ID", "SuiteID", "SpecDescription"}).
+				AddRow(1, 1, "spec 1")
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" IN ($1,$2,$3)`)).
+				WithArgs(1, 2, 3).
+				WillReturnRows(suiteRows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(specRows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "test_runs"`)).
+				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
 
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 
@@ -327,6 +400,7 @@ var _ = Describe("Handlers", func() {
 			ctx := context.Background()
 			first := 2
 			after := utils.EncodeCursor(2) // Assuming the offset is 2
+			desc := true
 
 			// Expected test data
 			totalCount := int64(5)
@@ -336,15 +410,27 @@ var _ = Describe("Handlers", func() {
 				AddRow(4, "project 4", 4)
 
 			// Mocking the expected SQL queries and results in the correct order
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1 OFFSET \$2`).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" ORDER BY id DESC LIMIT $1 OFFSET $2`)).
 				WithArgs(first, 2). // first=2, after=2 means starting from 3rd record
 				WillReturnRows(testRuns)
+
+			suiteRows := sqlmock.NewRows([]string{"ID", "TestRunID", "SuiteName"}).
+				AddRow(1, 3, "suite 1")
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" IN ($1,$2)`)).
+				WithArgs(3, 4).
+				WillReturnRows(suiteRows)
+
+			specRows := sqlmock.NewRows([]string{"ID", "SuiteID", "SpecDescription"}).
+				AddRow(1, 1, "spec 1")
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(specRows)
 
 			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
 				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(totalCount))
 
 			// Execute the resolver function
-			result, err := queryResolver.Query().TestRuns(ctx, &first, &after)
+			result, err := queryResolver.Query().TestRuns(ctx, &first, &after, &desc)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Validate the results
@@ -365,6 +451,7 @@ var _ = Describe("Handlers", func() {
 			ctx := context.Background()
 			first := 1
 			after := utils.EncodeCursor(2) // Assuming the offset is 2
+			desc := true
 
 			// Expected test data
 			totalCount := int64(3)
@@ -373,15 +460,27 @@ var _ = Describe("Handlers", func() {
 				AddRow(3, "project 3", 3)
 
 			// Mocking the expected SQL queries and results in the correct order
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" LIMIT \$1 OFFSET \$2`).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" ORDER BY id DESC LIMIT $1 OFFSET $2`)).
 				WithArgs(first, 2). // first=1, after=2 means starting from 3rd record
 				WillReturnRows(testRuns)
+
+			suiteRows := sqlmock.NewRows([]string{"ID", "TestRunID", "SuiteName"}).
+				AddRow(1, 3, "suite 1")
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
+				WithArgs(3).
+				WillReturnRows(suiteRows)
+
+			specRows := sqlmock.NewRows([]string{"ID", "SuiteID", "SpecDescription"}).
+				AddRow(1, 1, "spec 1")
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(specRows)
 
 			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
 				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(totalCount))
 
 			// Execute the resolver function
-			result, err := queryResolver.Query().TestRuns(ctx, &first, &after)
+			result, err := queryResolver.Query().TestRuns(ctx, &first, &after, &desc)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Validate the results
@@ -400,13 +499,14 @@ var _ = Describe("Handlers", func() {
 			queryResolver := &resolvers.Resolver{DB: gormDb}
 			testFirst := 3
 			testAfter := ""
+			desc := true
 			ctx := context.Background()
 			// Mock the query to fetch test runs with an error
 			mock.ExpectQuery(`SELECT \* FROM "test_runs" .*`).
 				WillReturnError(errors.New("database error when fetching test_runs"))
 
 			// Act: Call the TestRuns method
-			_, err := queryResolver.Query().TestRuns(ctx, &testFirst, &testAfter)
+			_, err := queryResolver.Query().TestRuns(ctx, &testFirst, &testAfter, &desc)
 
 			// Assert: Verify that an error occurred and it contains the correct message
 			Expect(err).To(HaveOccurred())
@@ -418,6 +518,7 @@ var _ = Describe("Handlers", func() {
 			queryResolver := &resolvers.Resolver{DB: gormDb} // Assuming your resolver structure
 			testFirst := 3
 			testAfter := ""
+			desc := true
 			ctx := context.Background()
 
 			mock.ExpectQuery(`SELECT \* FROM "test_runs" .*`).
@@ -426,12 +527,23 @@ var _ = Describe("Handlers", func() {
 					AddRow(2, "Project B").
 					AddRow(3, "Project C"))
 
+			suiteRows := sqlmock.NewRows([]string{"ID", "TestRunID", "SuiteName"}).
+				AddRow(1, 3, "suite 1")
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" IN ($1,$2,$3)`)).
+				WithArgs(1, 2, 3).
+				WillReturnRows(suiteRows)
+
+			specRows := sqlmock.NewRows([]string{"ID", "SuiteID", "SpecDescription"}).
+				AddRow(1, 1, "spec 1")
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(specRows)
 			// Mock the query to fetch total count with an error
 			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
 				WillReturnError(errors.New("database error when fetching total count"))
 
 			// Act: Call the TestRuns method
-			_, err := queryResolver.Query().TestRuns(ctx, &testFirst, &testAfter)
+			_, err := queryResolver.Query().TestRuns(ctx, &testFirst, &testAfter, &desc)
 
 			// Assert: Verify that an error occurred and it contains the correct message
 			Expect(err).To(HaveOccurred())
@@ -589,6 +701,22 @@ var gql_response struct {
 				ID              int    `json:"id"`
 				TestProjectName string `json:"testProjectName"`
 				TestSeed        int    `json:"testSeed"`
+				StartTime       string `json:"startTime"` // Assuming string for time, adjust if needed
+				EndTime         string `json:"endTime"`   // Assuming string for time, adjust if needed
+				SuiteRuns       []struct {
+					ID        int    `json:"id"`
+					SuiteName string `json:"suiteName"`
+					SpecRuns  []struct {
+						ID              int    `json:"id"`
+						SpecDescription string `json:"specDescription"`
+						Status          string `json:"status"`
+						Message         string `json:"message"`
+						Tags            []struct {
+							ID   int    `json:"id"`
+							Name string `json:"name"`
+						} `json:"tags"`
+					} `json:"specRuns"`
+				} `json:"suiteRuns"`
 			} `json:"testRun"`
 		} `json:"edges"`
 		PageInfo struct {
