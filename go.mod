@@ -3,7 +3,7 @@ module github.com/guidewire/fern-reporter
 go 1.23
 
 require (
-	github.com/99designs/gqlgen v0.17.62
+	github.com/99designs/gqlgen v0.17.63
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/PuerkitoBio/goquery v1.10.1
 	github.com/gin-contrib/cors v1.7.3
