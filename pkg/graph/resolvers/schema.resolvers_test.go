@@ -629,16 +629,53 @@ var _ = Describe("Handlers", func() {
 	})
 
 	Context("test TestRunByID resolver", func() {
-		It("should query db to fetch one test run record by ID", func() {
-			// Define the expected rows to be returned by the mock database
-			rows := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
-				AddRow(1, "project 1", "1").
-				AddRow(2, "project 2", "2")
+		FIt("should query db to fetch one test run record by ID", func() {
+			// Expected test data
+			totalCount := 1
 
-			// Expect a query to be executed against the "test_runs" table with the specified ID
-			mock.ExpectQuery("SELECT (.+) FROM \"test_runs\" WHERE id = \\$1  ORDER BY \"test_runs\".\"id\" LIMIT \\$2").
+			testRuns := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
+				AddRow(1, "project 1", 1).AddRow(2, "project 2", 2)
+
+			// Mocking the expected SQL queries and results in the correct order
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT $2`)).
 				WithArgs(1, 1).
-				WillReturnRows(rows)
+				WillReturnRows(testRuns)
+
+			suiteRows := sqlmock.NewRows([]string{"ID", "TestRunID", "SuiteName"}).
+				AddRow(1, 1, "suite 1")
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(suiteRows)
+
+			specRows := sqlmock.NewRows([]string{"ID", "SuiteID", "SpecDescription"}).
+				AddRow(1, 1, "spec 1")
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(specRows)
+
+			// Mock the spec_run_tags query
+			specRunTagsRows := sqlmock.NewRows([]string{"ID", "SpecRunID", "TagID"}).
+				AddRow(1, 1, 1).
+				AddRow(2, 1, 2).
+				AddRow(3, 1, 3)
+
+			mock.ExpectQuery(`SELECT \* FROM "spec_run_tags" WHERE "spec_run_tags"."spec_run_id" = \$1`).
+				WithArgs(1).
+				WillReturnRows(specRunTagsRows)
+
+			// Mock the tags query
+			tagsRows := sqlmock.NewRows([]string{"ID", "Name"}).
+				AddRow(1, "tag1").
+				AddRow(2, "tag2").
+				AddRow(3, "tag3")
+
+			mock.ExpectQuery(`SELECT \* FROM "tags" WHERE "tags"."id" IN \(\$1,\$2,\$3\)`).
+				WithArgs(1, 2, 3).
+				WillReturnRows(tagsRows)
+
+			mock.ExpectQuery(`SELECT count\(\*\) FROM "test_runs"`).
+				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(totalCount))
 
 			// Create a new instance of the resolver with the mock database
 			queryResolver := &resolvers.Resolver{DB: gormDb}
@@ -660,18 +697,51 @@ var _ = Describe("Handlers", func() {
             query {
                 testRunById(id: 1) {
                     id
-                    testProjectName
-                    testSeed
+                        testProjectName
+                        testSeed
+                        startTime
+                        endTime
+                        suiteRuns {
+                          id
+                          suiteName
+                          specRuns {
+                            id
+                            suiteId
+                            specDescription
+                            message
+                            tags {
+                              id
+                              name
+                            }
+                          }
+                        }
+                    }
                 }
-            }
         `
 
 			// Define the responseonse struct to unmarshal the GraphQL responseonse
 			var response struct {
 				TestRunByID struct {
-					ID              int
-					TestProjectName string
-					TestSeed        int
+					ID              int    `json:"id"`
+					TestProjectName string `json:"testProjectName"`
+					TestSeed        int    `json:"testSeed"`
+					StartTime       string `json:"startTime"`
+					EndTime         string `json:"endTime"`
+					SuiteRuns       []struct {
+						ID        int    `json:"id"`
+						SuiteName string `json:"suiteName"`
+						SpecRuns  []struct {
+							ID              int    `json:"id"`
+							SuiteID         int    `json:"suiteId"`
+							SpecDescription string `json:"specDescription"`
+							Status          string `json:"status"`
+							Message         string `json:"message"`
+							Tags            []struct {
+								ID   int    `json:"id"`
+								Name string `json:"name"`
+							} `json:"tags"`
+						} `json:"specRuns"`
+					} `json:"suiteRuns"`
 				}
 			}
 
@@ -685,9 +755,20 @@ var _ = Describe("Handlers", func() {
 			Expect(response.TestRunByID.TestProjectName).To(Equal("project 1"))
 			Expect(response.TestRunByID.TestSeed).To(Equal(1))
 
-			Expect(response.TestRunByID.ID).ToNot(Equal(2))
-			Expect(response.TestRunByID.TestProjectName).ToNot(Equal("project 2"))
-			Expect(response.TestRunByID.TestSeed).ToNot(Equal(2))
+			Expect(response.TestRunByID.SuiteRuns[0].ID).To(Equal(1))
+			Expect(response.TestRunByID.SuiteRuns[0].SuiteName).To(Equal("suite 1"))
+			Expect(response.TestRunByID.SuiteRuns[0].SpecRuns[0].ID).To(Equal(1))
+			Expect(response.TestRunByID.SuiteRuns[0].SpecRuns[0].SuiteID).To(Equal(1))
+			Expect(response.TestRunByID.SuiteRuns[0].SpecRuns[0].SpecDescription).To(Equal("spec 1"))
+			Expect(response.TestRunByID.SuiteRuns[0].SpecRuns[0].Tags[0].ID).To(Equal(1))
+			Expect(response.TestRunByID.SuiteRuns[0].SpecRuns[0].Tags[0].Name).To(Equal("tag1"))
+
+			Expect(response.TestRunByID.SuiteRuns[0].SpecRuns[0].Tags[1].ID).To(Equal(2))
+			Expect(response.TestRunByID.SuiteRuns[0].SpecRuns[0].Tags[1].Name).To(Equal("tag2"))
+
+			Expect(response.TestRunByID.SuiteRuns[0].SpecRuns[0].Tags[2].ID).To(Equal(3))
+			Expect(response.TestRunByID.SuiteRuns[0].SpecRuns[0].Tags[2].Name).To(Equal("tag3"))
+
 		})
 	})
 
