@@ -20,9 +20,13 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/vektah/gqlparser/v2 v2.5.23
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
+	google.golang.org/grpc v1.64.1
+	google.golang.org/protobuf v1.36.1
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.12
 )
+
+require github.com/mattn/go-sqlite3 v1.14.22 // indirect
 
 require (
 	github.com/agnivade/levenshtein v1.2.1 // indirect
@@ -92,4 +96,5 @@ require (
 	golang.org/x/tools v0.31.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gorm.io/driver/sqlite v1.5.7
 )

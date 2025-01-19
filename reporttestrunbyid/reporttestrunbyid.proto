@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package testrun;
+
+option go_package = "./;reporttestrunbyid";
+
+// Request and Response messages
+message ReportTestRunByIdRequest {
+  string id = 1;
+}
+
+message Tag {
+  string name = 1;
+}
+
+message SpecRun {
+  repeated Tag tags = 1;
+}
+
+message SuiteRun {
+  repeated SpecRun specRuns = 1;
+}
+
+message TestRun {
+  string id = 1;
+  repeated SuiteRun suiteRuns = 2;
+}
+
+message ReportTestRunByIdResponse {
+  string reportHeader = 1;
+  TestRun testRun = 2;
+}
+
+// Service definition
+service TestRunService {
+  rpc ReportTestRunById(ReportTestRunByIdRequest) returns (ReportTestRunByIdResponse);
+}
+
