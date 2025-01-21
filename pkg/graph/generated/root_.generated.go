@@ -50,7 +50,7 @@ type ComplexityRoot struct {
 	Query struct {
 		TestRun     func(childComplexity int, testRunFilter modelv2.TestRunFilter) int
 		TestRunByID func(childComplexity int, id int) int
-		TestRuns    func(childComplexity int, first *int, after *string) int
+		TestRuns    func(childComplexity int, first *int, after *string, desc *bool) int
 	}
 
 	SpecRun struct {
@@ -180,7 +180,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TestRuns(childComplexity, args["first"].(*int), args["after"].(*string)), true
+		return e.complexity.Query.TestRuns(childComplexity, args["first"].(*int), args["after"].(*string), args["desc"].(*bool)), true
 
 	case "SpecRun.endTime":
 		if e.complexity.SpecRun.EndTime == nil {
@@ -502,7 +502,7 @@ input TestRunFilter {
 }
 
 type Query {
-  testRuns(first: Int, after: String): TestRunConnection!
+  testRuns(first: Int, after: String, desc: Boolean): TestRunConnection!
   testRun(testRunFilter: TestRunFilter!): [TestRun!]!
   testRunById(id: Int!): TestRun
 }
