@@ -12,6 +12,6 @@ server:
   port: :8080
 auth:
   json-web-keys-endpoint: ""
-  enabled: "false"
+  enabled: "true"
   scope-claim-name: "scope"
 header: "Fern Acceptance Test Report"
