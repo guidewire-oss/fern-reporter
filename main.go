@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/guidewire/fern-reporter/pkg/graph/generated"
 	"github.com/guidewire/fern-reporter/pkg/graph/resolvers"
@@ -96,6 +97,7 @@ func PlaygroundHandler(path string) gin.HandlerFunc {
 
 func GraphqlHandler(gormdb *gorm.DB) gin.HandlerFunc {
 	h := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: &resolvers.Resolver{DB: gormdb}}))
+	h.AddTransport(transport.POST{})
 
 	return func(c *gin.Context) {
 		h.ServeHTTP(c.Writer, c.Request)
