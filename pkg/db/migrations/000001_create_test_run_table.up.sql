@@ -10,6 +10,7 @@ CREATE TABLE public.test_runs (
     test_project_name text,
     start_time timestamp with time zone,
     end_time timestamp with time zone,
+    enable_gemini_insights boolean NOT NULL DEFAULT true,
     PRIMARY KEY(id, test_seed)
 );
 
