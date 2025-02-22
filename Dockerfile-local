@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y postgresql postgresql-contrib
 ENV POSTGRES_DB=fern
 ENV POSTGRES_USER=fern
 ENV POSTGRES_PASSWORD=fern
+ENV AUTH_ENABLED=False
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
@@ -37,5 +38,5 @@ COPY wait-for-postgres.sh ./
 
 # Define the command to run your application
 # This should start PostgreSQL and then your application
-CMD service postgresql start && ./wait-for-postgres.sh localhost && ./fern
+CMD service postgresql start && ./wait-for-postgres.sh 0.0.0.0 && ./fern
 

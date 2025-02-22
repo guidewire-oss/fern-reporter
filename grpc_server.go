@@ -12,17 +12,17 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"fern-reporter/config"
-	"fern-reporter/createtestrun"
-	"fern-reporter/deletetestrun"
-	"fern-reporter/gettestrunall"
-	gtid "fern-reporter/gettestrunbyid"
-	"fern-reporter/pkg/models"
-	"fern-reporter/processtags"
-	pb "fern-reporter/reporter"
-	"fern-reporter/reporttestrunall"
-	"fern-reporter/reporttestrunbyid"
-	"fern-reporter/updatetestrun"
+	"fern-reporter-mailprak/config"
+	"fern-reporter-mailprak/createtestrun"
+	"fern-reporter-mailprak/deletetestrun"
+	"fern-reporter-mailprak/gettestrunall"
+	gtid "fern-reporter-mailprak/gettestrunbyid"
+	"fern-reporter-mailprak/pkg/models"
+	"fern-reporter-mailprak/processtags"
+	pb "fern-reporter-mailprak/reporter"
+	"fern-reporter-mailprak/reporttestrunall"
+	"fern-reporter-mailprak/reporttestrunbyid"
+	"fern-reporter-mailprak/updatetestrun"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -84,9 +84,10 @@ func (s *grpcServer) SendReport(ctx context.Context, req *pb.ReportRequest) (*pb
 	return &pb.ReportResponse{Status: "Report received successfully"}, nil
 }
 
-func (s *server) Ping(ctx context.Context, in *pb.PingRequest) (*pb.PingResponse, error) {
-	log.Printf("Received: %v", in.GetMessage())
-	return &pb.PingResponse{Message: "Pong: " + in.GetMessage()}, nil
+// Correct method signature (use types from the generated pb package)
+func (s *server) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
+	log.Printf("Received message: %s", req.GetMessage())
+	return &pb.PingResponse{Message: "Pong"}, nil
 }
 
 // Implement ReportTestRunById
@@ -120,8 +121,8 @@ func (s *TestRunServiceServerid) ReportTestRunById(ctx context.Context, req *rep
 	return &reporttestrunbyid.ReportTestRunByIdResponse{
 		ReportHeader: "Report Header", // Replace with actual header logic
 		TestRun: &reporttestrunbyid.TestRun{
-			Id:         strconv.Itoa(testRunID), // Convert ID back to string
-			SuiteRuns:  pbSuiteRuns,
+			Id:        strconv.Itoa(testRunID), // Convert ID back to string
+			SuiteRuns: pbSuiteRuns,
 		},
 	}, nil
 }
@@ -147,8 +148,8 @@ func (s *TestRunServiceServer) ReportTestRunAll(ctx context.Context, req *report
 			pbSuiteRuns = append(pbSuiteRuns, &reporttestrunall.SuiteRun{SpecRuns: pbSpecRuns})
 		}
 		pbTestRuns = append(pbTestRuns, &reporttestrunall.TestRun{
-			Id:         strconv.FormatUint(tr.ID, 10),
-			SuiteRuns:  pbSuiteRuns,
+			Id:        strconv.FormatUint(tr.ID, 10),
+			SuiteRuns: pbSuiteRuns,
 		})
 	}
 
@@ -157,8 +158,6 @@ func (s *TestRunServiceServer) ReportTestRunAll(ctx context.Context, req *report
 		TestRuns:     pbTestRuns,
 	}, nil
 }
-
-
 
 // Implement DeleteTestRun
 func (s *TestRunServiceServer) DeleteTestRun(ctx context.Context, req *deletetestrun.DeleteTestRunRequest) (*deletetestrun.DeleteTestRunResponse, error) {
@@ -304,7 +303,6 @@ func ProcessTags(db *gorm.DB, testRun *processtags.TestRun) (*processtags.Proces
 	}, nil
 }
 
-
 // Convert via JSON
 func convertTestRun(source *createtestrun.TestRun) (*processtags.TestRun, error) {
 	jsonBytes, err := json.Marshal(source) // Serialize source
@@ -334,19 +332,19 @@ func (s *testRunServiceServer) CreateTestRun(ctx context.Context, req *createtes
 			return &createtestrun.CreateTestRunResponse{Success: false, ErrorMessage: "record not found"}, err
 		}
 	}
-    
-    mappedTestRun, err := convertTestRun(testRun)
-    if err != nil {
-        return nil, err // Handle conversion error  
-    }
+
+	mappedTestRun, err := convertTestRun(testRun)
+	if err != nil {
+		return nil, err // Handle conversion error
+	}
 
 	// Process tags (assuming ProcessTags function exists)
 	response, err := ProcessTags(s.db, mappedTestRun)
 	if err != nil {
 		return &createtestrun.CreateTestRunResponse{
-			Success:      false,
-		//	ErrorMessage: err.Error(),
-            ErrorMessage: response.ErrorMessage,
+			Success: false,
+			//	ErrorMessage: err.Error(),
+			ErrorMessage: response.ErrorMessage,
 		}, err
 	}
 
@@ -368,9 +366,10 @@ func (s *testRunServiceServer) CreateTestRun(ctx context.Context, req *createtes
 	}, nil
 }
 
+func StartGRPCServer(context context.Context) {
+//	lis, err := net.Listen("tcp", ":50051") // Use the desired gRPC port
+	lis, err := net.Listen("tcp", "127.0.0.1:50051")
 
-func startGRPCServer() {
-	lis, err := net.Listen("tcp", ":50051") // Use the desired gRPC port
 	if err != nil {
 		log.Fatalf("Failed to listen on port 50051: %v", err)
 	}
@@ -378,30 +377,28 @@ func startGRPCServer() {
 	s := grpc.NewServer()
 	pb.RegisterReporterServer(s, &grpcServer{})
 
-	log.Println("gRPC server is running on port 50051")
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve gRPC: %v", err)
-	}
-		
-	// ping
-	pb.RegisterPingServiceServer(s, &server{})
-	log.Printf("server listening at %v", lis.Addr())
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
-	
+
+
+	//
+	//pb.RegisterPingServiceServer(s, &server{})
+	//log.Printf("server listening at %v", lis.Addr())
+	//if err := s.Serve(lis); err != nil {
+	//	log.Fatalf("failed to serve: %v", err)
+	//}
+
 	// testid starts here
 	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
+	pb.RegisterPingServiceServer(s, &server{}) // Register server
 
-    // Register the reporttestrunbyid service
+	// Register the reporttestrunbyid service
 	reporttestrunbyid.RegisterTestRunServiceServer(s, &TestRunServiceServerid{db: db})
 	// Register the service
 	reporttestrunall.RegisterTestRunServiceServer(s, &TestRunServiceServer{db: db})
 	//deletetestrun
-    deletetestrun.RegisterTestRunServiceServer(s, &TestRunServiceServerDelete{db: db})
+	deletetestrun.RegisterTestRunServiceServer(s, &TestRunServiceServerDelete{db: db})
 	//updatetestrun
 	updatetestrun.RegisterTestRunServiceServer(s, &Server{db: db})
 	//gettestrunall and gettetsrunbyid
@@ -409,18 +406,26 @@ func startGRPCServer() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-   
+
 	testService := &TestServiceServer{db: db}
 	gettestrunall.RegisterTestServiceServer(s, testService)
-    // processtags 
+	// processtags
 	tagService := &tagServiceServer{db: db}
 	// Register the service
 	processtags.RegisterTagServiceServer(s, tagService)
-    // createtestrun 
+	// createtestrun
 	testRunService := &testRunServiceServer{db: db}
 	createtestrun.RegisterTestRunServiceServer(s, testRunService)
 
 	// Enable reflection for testing
 	reflection.Register(s)
+
+	// Run the gRPC server in a goroutine
+	go func() {
+		log.Println("gRPC server is running on port 50051")
+		if err := s.Serve(lis); err != nil {
+			log.Fatalf("Failed to serve gRPC: %v", err)
+		}
+	}()
 
 }

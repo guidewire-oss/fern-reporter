@@ -9,13 +9,14 @@ import (
 	"gorm.io/gorm"
 
 	"context"
+	"html/template"
+	"log"
+
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
-	"html/template"
-	"log"
 
 	"time"
 
@@ -50,8 +51,29 @@ func initServer() {
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
 
-  go startGRPCServer() // Start the gRPC server in a separate goroutine
+	// Create a cancelable context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // Ensure cleanup on exit
 
+	// Start gRPC server in a goroutine
+	go StartGRPCServer(ctx)
+
+	// Listen for OS signals (CTRL+C, SIGTERM)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+
+	// Use select to wait for either a signal or a timeout
+	select {
+	case <-sigs: // Wait for a shutdown signal (CTRL+C)
+		fmt.Println("Received shutdown signal, stopping gRPC server...")
+		cancel() // Cancel the context to gracefully stop the server
+
+	// case <-time.After(300 * time.Second): // Timeout after 10 seconds (adjust as needed)
+	// 	fmt.Println("Timeout reached, stopping gRPC server...")
+	// 	cancel() // Cancel the context to stop the server after timeout
+	}
+	
+	
 	if config.GetAuth().Enabled {
 		checkAuthConfig()
 		configJWTMiddleware(router)

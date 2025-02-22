@@ -1,6 +1,6 @@
 db:
   driver:   postgres
-  host:     localhost
+  host:     db
   port:     5432
   database: fern
   username: fern
