@@ -30,17 +30,17 @@ services:
     volumes:
       - ./docker/servers.json:/pgadmin4/servers.json
 
-  grpc-server:
-    build:
-      context: ./
-      dockerfile: Dockerfile.server
-    container_name: grpc-server
-    networks:
-      - dev_grpc_network      
-    ports:
-      - "50051:50051"
-    depends_on:
-      - db
+  # grpc-server:
+  #   build:
+  #     context: ./
+  #     dockerfile: Dockerfile.server
+  #   container_name: grpc-server
+  #   networks:
+  #     - dev_grpc_network      
+  #   ports:
+  #     - "50051:50051"
+  #   depends_on:
+  #     - db
 
   # grpc-server:
   #   ports:
@@ -66,6 +66,6 @@ services:
   #   depends_on:
   #     - grpc-server
 
-networks:
-  dev_grpc_network:
-      external: true      
+# networks:
+#   dev_grpc_network:
+#       external: true      
