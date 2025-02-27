@@ -10,12 +10,16 @@ type TimeLog struct {
 }
 
 type TestRun struct {
-	ID              uint64     `json:"id" gorm:"primaryKey"`
-	TestProjectName string     `json:"test_project_name"`
-	TestSeed        uint64     `json:"test_seed"`
-	StartTime       time.Time  `json:"start_time"`
-	EndTime         time.Time  `json:"end_time"`
-	SuiteRuns       []SuiteRun `json:"suite_runs" gorm:"foreignKey:TestRunID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	ID                uint64     `json:"id" gorm:"primaryKey"`
+	TestProjectName   string     `json:"test_project_name"`
+	TestSeed          uint64     `json:"test_seed"`
+	StartTime         time.Time  `json:"start_time"`
+	EndTime           time.Time  `json:"end_time"`
+	GitBranch         string     `json:"git_branch"`
+	GitSha            string     `json:"git_sha"`
+	BuildTriggerActor string     `json:"build_trigger_actor"`
+	BuildUrl          string     `json:"build_url"`
+	SuiteRuns         []SuiteRun `json:"suite_runs" gorm:"foreignKey:TestRunID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 type SuiteRun struct {
