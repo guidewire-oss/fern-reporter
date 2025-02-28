@@ -108,11 +108,15 @@ var _ = Describe("Handlers", func() {
 	Context("when createTestRun handler is invoked", func() {
 		It("and test run doesn't exist, it should create one and return 201 OK", func() {
 			expectedTestRun := models.TestRun{
-				ID:              0,
-				TestProjectName: "TestProject",
-				StartTime:       time.Time{},
-				EndTime:         time.Time{},
-				TestSeed:        0,
+				ID:                0,
+				TestProjectName:   "TestProject",
+				StartTime:         time.Time{},
+				EndTime:           time.Time{},
+				GitBranch:         "main",
+				GitSha:            "abcdef",
+				BuildTriggerActor: "Actor Name",
+				BuildUrl:          "https://someurl.com",
+				TestSeed:          0,
 				SuiteRuns: []models.SuiteRun{
 					{
 						ID:        1,
@@ -142,8 +146,8 @@ var _ = Describe("Handlers", func() {
 			}
 
 			mock.ExpectBegin()
-			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","test_seed","start_time","end_time") VALUES ($1,$2,$3,$4) RETURNING "id"`)).
-				WithArgs(expectedTestRun.TestProjectName, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime).
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","test_seed","start_time","end_time","git_branch","git_sha","build_trigger_actor","build_url") VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING "id"`)).
+				WithArgs(expectedTestRun.TestProjectName, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl).
 				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 			mock.ExpectCommit()
 
@@ -151,8 +155,8 @@ var _ = Describe("Handlers", func() {
 			c, _ := gin.CreateTestContext(w)
 
 			// Create a new request with JSON payload
-			jsonStr := []byte(`{"id": 0, "test_project_name":"TestProject"}`)
-			req, err := http.NewRequest("POST", "/", bytes.NewBuffer(jsonStr))
+			jsonStr := fmt.Sprintf(`{"id": 0, "test_project_name":"TestProject", "git_branch": "%s", "git_sha": "%s", "build_trigger_actor": "%s", "build_url": "%s"}`, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl)
+			req, err := http.NewRequest("POST", "/", bytes.NewBuffer([]byte(jsonStr)))
 			if err != nil {
 				fmt.Printf("%v", err)
 			}
@@ -176,7 +180,10 @@ var _ = Describe("Handlers", func() {
 			Expect(testRun.TestSeed).To(Equal(expectedTestRun.TestSeed))
 			Expect(testRun.StartTime).To(Equal(expectedTestRun.StartTime))
 			Expect(testRun.EndTime).To(Equal(expectedTestRun.EndTime))
-
+			Expect(testRun.GitBranch).To(Equal(expectedTestRun.GitBranch))
+			Expect(testRun.GitSha).To(Equal(expectedTestRun.GitSha))
+			Expect(testRun.BuildTriggerActor).To(Equal(expectedTestRun.BuildTriggerActor))
+			Expect(testRun.BuildUrl).To(Equal(expectedTestRun.BuildUrl))
 		})
 
 		It("with bad POST payload, it should return Bad Request 400 ", func() {
@@ -204,11 +211,15 @@ var _ = Describe("Handlers", func() {
 
 		It("and test run record exists, it should handle error while finding existing record and return 404 Not Found", func() {
 			expectedTestRun := models.TestRun{
-				ID:              1,
-				TestProjectName: "TestProject",
-				StartTime:       time.Time{},
-				EndTime:         time.Time{},
-				TestSeed:        1,
+				ID:                1,
+				TestProjectName:   "TestProject",
+				StartTime:         time.Time{},
+				EndTime:           time.Time{},
+				GitBranch:         "main",
+				GitSha:            "abcdef",
+				BuildTriggerActor: "Actor Name",
+				BuildUrl:          "https://someurl.com",
+				TestSeed:          1,
 				SuiteRuns: []models.SuiteRun{
 					{
 						ID:        1,
@@ -246,8 +257,8 @@ var _ = Describe("Handlers", func() {
 			c, _ := gin.CreateTestContext(w)
 
 			// Create a new request with JSON payload
-			jsonStr := []byte(`{"id": 1, "test_project_name":"TestProject"}`)
-			req, err := http.NewRequest("POST", "/", bytes.NewBuffer(jsonStr))
+			jsonStr := fmt.Sprintf(`{"id": 1, "test_project_name":"TestProject", "git_branch": "%s", "git_sha": "%s", "build_trigger_actor": "%s", "build_url": "%s"}`, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl)
+			req, err := http.NewRequest("POST", "/", bytes.NewBuffer([]byte(jsonStr)))
 			if err != nil {
 				fmt.Printf("%v", err)
 			}
@@ -265,11 +276,15 @@ var _ = Describe("Handlers", func() {
 
 		It("and error occurs during ProcessTags, it should handle error and return 500 Internal Server Error", func() {
 			var testRun = models.TestRun{
-				ID:              1,
-				TestProjectName: "TestProject",
-				StartTime:       time.Time{},
-				EndTime:         time.Time{},
-				TestSeed:        1,
+				ID:                1,
+				TestProjectName:   "TestProject",
+				StartTime:         time.Time{},
+				EndTime:           time.Time{},
+				GitBranch:         "main",
+				GitSha:            "abcdef",
+				BuildTriggerActor: "Actor Name",
+				BuildUrl:          "https://someurl.com",
+				TestSeed:          1,
 				SuiteRuns: []models.SuiteRun{
 					{
 						ID:        1,
@@ -338,11 +353,15 @@ var _ = Describe("Handlers", func() {
 
 		It("and error occurs during Save/Update of testRun record, it should handle error and return 500 Internal Server Error", func() {
 			var testRun = models.TestRun{
-				ID:              1,
-				TestProjectName: "TestProject",
-				StartTime:       time.Time{},
-				EndTime:         time.Time{},
-				TestSeed:        1,
+				ID:                1,
+				TestProjectName:   "TestProject",
+				StartTime:         time.Time{},
+				EndTime:           time.Time{},
+				GitBranch:         "main",
+				GitSha:            "abcdef",
+				BuildTriggerActor: "Actor Name",
+				BuildUrl:          "https://someurl.com",
+				TestSeed:          1,
 				SuiteRuns: []models.SuiteRun{
 					{
 						ID:        1,
@@ -389,8 +408,8 @@ var _ = Describe("Handlers", func() {
 			mock.ExpectCommit()
 
 			mock.ExpectBegin()
-			mock.ExpectQuery(regexp.QuoteMeta(`UPDATE "test_runs" SET "test_project_name"=$1,"test_seed"=$2,"start_time"=$3,"end_time"=$4 WHERE "id" = $5`)).
-				WithArgs(testRun.TestProjectName, testRun.TestSeed, testRun.StartTime, testRun.EndTime, testRun.ID).
+			mock.ExpectQuery(regexp.QuoteMeta(`UPDATE "test_runs" SET "test_project_name"=$1,"test_seed"=$2,"start_time"=$3,"end_time"=$4,"git_branch"=$5,"git_sha"=$6,"build_trigger_actor"=$7,"build_url"=$8 WHERE "id" = $5`)).
+				WithArgs(testRun.TestProjectName, testRun.TestSeed, testRun.StartTime, testRun.EndTime, testRun.ID, testRun.GitBranch, testRun.GitSha, testRun.BuildTriggerActor, testRun.BuildUrl).
 				WillReturnError(errors.New("unable to save record"))
 			mock.ExpectRollback()
 
@@ -424,11 +443,15 @@ var _ = Describe("Handlers", func() {
 
 	Context("When ProcessTags is invoked", func() {
 		var testRun = models.TestRun{
-			ID:              0,
-			TestProjectName: "TestProject",
-			StartTime:       time.Time{},
-			EndTime:         time.Time{},
-			TestSeed:        0,
+			ID:                0,
+			TestProjectName:   "TestProject",
+			StartTime:         time.Time{},
+			EndTime:           time.Time{},
+			GitBranch:         "main",
+			GitSha:            "abcdef",
+			BuildTriggerActor: "Actor Name",
+			BuildUrl:          "https://someurl.com",
+			TestSeed:          0,
 			SuiteRuns: []models.SuiteRun{
 				{
 					ID:        1,
@@ -472,11 +495,15 @@ var _ = Describe("Handlers", func() {
 
 	Context("When ProcessTags is invoked and tag creation fails", func() {
 		var testRun = models.TestRun{
-			ID:              0,
-			TestProjectName: "TestProject",
-			StartTime:       time.Time{},
-			EndTime:         time.Time{},
-			TestSeed:        0,
+			ID:                0,
+			TestProjectName:   "TestProject",
+			StartTime:         time.Time{},
+			EndTime:           time.Time{},
+			GitBranch:         "main",
+			GitSha:            "abcdef",
+			BuildTriggerActor: "Actor Name",
+			BuildUrl:          "https://someurl.com",
+			TestSeed:          0,
 			SuiteRuns: []models.SuiteRun{
 				{
 					ID:        1,
@@ -524,11 +551,15 @@ var _ = Describe("Handlers", func() {
 
 	Context("When ProcessTags is invoked and tag already exists in the database", func() {
 		var testRun = models.TestRun{
-			ID:              0,
-			TestProjectName: "TestProject",
-			StartTime:       time.Time{},
-			EndTime:         time.Time{},
-			TestSeed:        0,
+			ID:                0,
+			TestProjectName:   "TestProject",
+			StartTime:         time.Time{},
+			EndTime:           time.Time{},
+			GitBranch:         "main",
+			GitSha:            "abcdef",
+			BuildTriggerActor: "Actor Name",
+			BuildUrl:          "https://someurl.com",
+			TestSeed:          0,
 			SuiteRuns: []models.SuiteRun{
 				{
 					ID:        1,
@@ -627,11 +658,15 @@ var _ = Describe("Handlers", func() {
 
 	Context("When ProcessTags is invoked and tag creation fails due to unknown error", func() {
 		var testRun = models.TestRun{
-			ID:              0,
-			TestProjectName: "TestProject",
-			StartTime:       time.Time{},
-			EndTime:         time.Time{},
-			TestSeed:        0,
+			ID:                0,
+			TestProjectName:   "TestProject",
+			StartTime:         time.Time{},
+			EndTime:           time.Time{},
+			GitBranch:         "main",
+			GitSha:            "abcdef",
+			BuildTriggerActor: "Actor Name",
+			BuildUrl:          "https://someurl.com",
+			TestSeed:          0,
 			SuiteRuns: []models.SuiteRun{
 				{
 					ID:        1,
@@ -697,10 +732,14 @@ var _ = Describe("Handlers", func() {
 		It("and test run exists, it should return 200 OK", func() {
 
 			expectedTestRun := models.TestRun{
-				ID:              1,
-				TestProjectName: "TestProject",
-				StartTime:       time.Now(),
-				EndTime:         time.Now(),
+				ID:                1,
+				TestProjectName:   "TestProject",
+				StartTime:         time.Now(),
+				EndTime:           time.Now(),
+				GitBranch:         "main",
+				GitSha:            "abcdef",
+				BuildTriggerActor: "Actor Name",
+				BuildUrl:          "https://someurl.com",
 				SuiteRuns: []models.SuiteRun{
 					{
 						ID:        1,
@@ -725,8 +764,8 @@ var _ = Describe("Handlers", func() {
 
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT $2`)).
 				WithArgs("1", 1).
-				WillReturnRows(mock.NewRows([]string{"id", "test_project_name", "test_seed"}).
-					AddRow(expectedTestRun.ID, expectedTestRun.TestProjectName, expectedTestRun.TestSeed))
+				WillReturnRows(mock.NewRows([]string{"id", "test_project_name", "test_seed", "git_branch", "git_sha", "build_trigger_actor", "build_url"}).
+					AddRow(expectedTestRun.ID, expectedTestRun.TestProjectName, expectedTestRun.TestSeed, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl))
 
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
