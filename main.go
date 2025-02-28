@@ -52,26 +52,26 @@ func initServer() {
 	router := gin.Default()
 
 	// Create a cancelable context
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel() // Ensure cleanup on exit
+	// ctx, cancel := context.WithCancel(context.Background())
+//	defer cancel() // Ensure cleanup on exit
 
 	// Start gRPC server in a goroutine
-	go StartGRPCServer(ctx)
+	// go StartGRPCServer(ctx)
 
-	// Listen for OS signals (CTRL+C, SIGTERM)
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	// // Listen for OS signals (CTRL+C, SIGTERM)
+	// sigs := make(chan os.Signal, 1)
+	// signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
 	// Use select to wait for either a signal or a timeout
-	select {
-	case <-sigs: // Wait for a shutdown signal (CTRL+C)
-		fmt.Println("Received shutdown signal, stopping gRPC server...")
-		cancel() // Cancel the context to gracefully stop the server
+	// select {
+	// case <-sigs: // Wait for a shutdown signal (CTRL+C)
+	// 	fmt.Println("Received shutdown signal, stopping gRPC server...")
+	// 	cancel() // Cancel the context to gracefully stop the server
 
-	// case <-time.After(300 * time.Second): // Timeout after 10 seconds (adjust as needed)
-	// 	fmt.Println("Timeout reached, stopping gRPC server...")
-	// 	cancel() // Cancel the context to stop the server after timeout
-	}
+	// // case <-time.After(300 * time.Second): // Timeout after 10 seconds (adjust as needed)
+	// // 	fmt.Println("Timeout reached, stopping gRPC server...")
+	// // 	cancel() // Cancel the context to stop the server after timeout
+	// }
 	
 	
 	if config.GetAuth().Enabled {
