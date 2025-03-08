@@ -56,6 +56,7 @@ func GetProjectSpecStatistics(h *Handler, projectName string) []models.TestSumma
 		Joins("INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id").
 		Joins("INNER JOIN spec_runs ON suite_runs.id = spec_runs.suite_id").
 		Select(`suite_runs.id AS suite_run_id, 
+			suite_runs.suite_name,
             test_runs.test_project_name, 
             test_runs.start_time, 
             COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'passed') AS total_passed_spec_runs, 

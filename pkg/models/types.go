@@ -52,6 +52,7 @@ type TestRunInsight struct {
 
 type TestSummary struct {
 	SuiteRunID           uint
+	SuiteName            string
 	TestProjectName      string
 	StartTime            time.Time
 	TotalPassedSpecRuns  int64
