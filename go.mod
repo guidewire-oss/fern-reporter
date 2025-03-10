@@ -1,7 +1,6 @@
 module github.com/guidewire/fern-reporter
 
 go 1.23
-
 require (
 	github.com/99designs/gqlgen v0.17.66
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -12,7 +11,7 @@ require (
 	github.com/lestrrat-go/iter v1.0.2
 	github.com/lestrrat-go/jwx/v2 v2.1.4
 	github.com/markbates/pkger v0.17.1
-	github.com/onsi/ginkgo/v2 v2.22.2
+	github.com/onsi/ginkgo/v2 v2.23.0
 	github.com/onsi/gomega v1.36.2
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
