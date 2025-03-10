@@ -30,17 +30,17 @@ services:
     volumes:
       - ./docker/servers.json:/pgadmin4/servers.json
 
-  # grpc-server:
-  #   build:
-  #     context: ./
-  #     dockerfile: Dockerfile.server
-  #   container_name: grpc-server
-  #   networks:
-  #     - dev_grpc_network      
-  #   ports:
-  #     - "50051:50051"
-  #   depends_on:
-  #     - db
+  grpc-server:
+    build:
+      context: ./
+      dockerfile: Dockerfile-grpc
+    container_name: grpc-server
+    networks:
+      - dev_grpc_network      
+    ports:
+      - "50051:50051"
+    depends_on:
+      - fern-app
 
   # grpc-server:
   #   ports:
@@ -50,22 +50,24 @@ services:
   #   networks:
   #     - dev_grpc_network
 
+
   fern-app:
     build:
       context: .
       dockerfile: Dockerfile-local
     ports:
       - "8080:8080"
-    environment:
-      - GRPC_SERVER_ADDR=grpc-server:50051
 
-  # grpc-client:
+  # grpcclient:
   #   build:
-  #     context: .
+  #     context: ./client
   #     dockerfile: Dockerfile.client
   #   depends_on:
   #     - grpc-server
+  #   networks:
+  #     - dev_grpc_network
 
-# networks:
-#   dev_grpc_network:
-#       external: true      
+networks:
+  dev_grpc_network:
+      external: true      
+  

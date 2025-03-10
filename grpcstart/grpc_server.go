@@ -368,7 +368,7 @@ func (s *testRunServiceServer) CreateTestRun(ctx context.Context, req *createtes
 
 func StartGRPCServer(context context.Context) {
 //	lis, err := net.Listen("tcp", ":50051") // Use the desired gRPC port
-	lis, err := net.Listen("tcp", "127.0.0.1:50051")
+	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 
 	if err != nil {
 		log.Fatalf("Failed to listen on port 50051: %v", err)
