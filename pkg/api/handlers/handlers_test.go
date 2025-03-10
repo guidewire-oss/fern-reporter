@@ -1062,11 +1062,11 @@ var _ = Describe("Handlers", func() {
 	Context("When a request is made to get a test summary by project name", func() {
 		It("should return the summary of test runs for the project", func() {
 			projectName := "TestProject"
-			rows := sqlmock.NewRows([]string{"suite_run_id", "test_project_name", "start_time", "total_passed_spec_runs", "total_skipped_spec_runs", "total_spec_runs"}).
-				AddRow(1, "TestProject", time.Date(2024, 4, 20, 12, 0, 0, 0, time.UTC), 5, 1, 10).
-				AddRow(2, "TestProject", time.Date(2024, 4, 21, 12, 0, 0, 0, time.UTC), 7, 2, 12)
+			rows := sqlmock.NewRows([]string{"suite_run_id", "suite_name", "test_project_name", "start_time", "total_passed_spec_runs", "total_skipped_spec_runs", "total_spec_runs"}).
+				AddRow(1, "TestSuite1", "TestProject", time.Date(2024, 4, 20, 12, 0, 0, 0, time.UTC), 5, 1, 10).
+				AddRow(2, "TestSuite2", "TestProject", time.Date(2024, 4, 21, 12, 0, 0, 0, time.UTC), 7, 2, 12)
 
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT suite_runs.id AS suite_run_id, test_runs.test_project_name, 
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT suite_runs.id AS suite_run_id, suite_runs.suite_name, test_runs.test_project_name, 
 			   test_runs.start_time, COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'passed') AS total_passed_spec_runs, 
 			   COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'skipped') AS total_skipped_spec_runs, COUNT(spec_runs.id) 
            		AS total_spec_runs FROM "test_runs" INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id 
@@ -1087,6 +1087,7 @@ var _ = Describe("Handlers", func() {
 
 			expectedJSON := `[{
 				"SuiteRunID": 1,
+				"SuiteName": "TestSuite1",
 				"TestProjectName": "TestProject",
 				"StartTime": "2024-04-20T12:00:00Z",
 				"TotalPassedSpecRuns": 5,
@@ -1094,6 +1095,7 @@ var _ = Describe("Handlers", func() {
 				"TotalSpecRuns": 10
 			}, {
 				"SuiteRunID": 2,
+				"SuiteName": "TestSuite2",
 				"TestProjectName": "TestProject",
 				"StartTime": "2024-04-21T12:00:00Z",
 				"TotalPassedSpecRuns": 7,
