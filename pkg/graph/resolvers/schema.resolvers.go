@@ -22,7 +22,14 @@ func (r *queryResolver) TestRuns(ctx context.Context, first *int, after *string,
 	}
 
 	var testRuns []*modelv2.TestRun
-	if err := r.DB.Preload("SuiteRuns.SpecRuns.Tags").Offset(offset).Limit(*first).Order(order).Find(&testRuns).Error; err != nil {
+	// Perform the join between test_runs and project_details to get project details (UUID, project_name, team_name)
+	if err := r.DB.Preload("SuiteRuns.SpecRuns.Tags").
+		Joins("JOIN project_details ON project_details.id = test_runs.project_id").
+		Select("test_runs.*, project_details.uuid, project_details.name AS test_project_name, project_details.team_name").
+		Offset(offset).
+		Limit(*first).
+		Order(order).
+		Find(&testRuns).Error; err != nil {
 		return nil, err
 	}
 

@@ -50,20 +50,19 @@ func ParseTimeFromStringWithDefault(timeString string, defaultTime time.Time) (t
 	return parsedTime, nil
 }
 
-func GetProjectSpecStatistics(h *Handler, projectName string) []models.TestSummary {
+func GetProjectSpecStatistics(h *Handler, projectId string) []models.TestSummary {
 	var testSummaries []models.TestSummary
 	h.db.Table("test_runs").
 		Joins("INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id").
 		Joins("INNER JOIN spec_runs ON suite_runs.id = spec_runs.suite_id").
 		Select(`suite_runs.id AS suite_run_id, 
 			suite_runs.suite_name,
-            test_runs.test_project_name, 
             test_runs.start_time, 
             COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'passed') AS total_passed_spec_runs, 
 			COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'skipped') AS total_skipped_spec_runs, 
             COUNT(spec_runs.id) AS total_spec_runs`).
-		Where("test_runs.test_project_name = ?", projectName).
-		Group("suite_runs.id, test_runs.test_project_name, test_runs.start_time").
+		Where("test_runs.project_id = ?", projectId).
+		Group("suite_runs.id, test_runs.start_time").
 		Order("test_runs.start_time").
 		Scan(&testSummaries)
 	return testSummaries
