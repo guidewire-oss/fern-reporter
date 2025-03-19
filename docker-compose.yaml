@@ -42,30 +42,12 @@ services:
     depends_on:
       - fern-app
 
-  # grpc-server:
-  #   ports:
-  #     - "2025:2025"
-  #   dockerfile: Dockerfile.server
-  #   container_name: grpc-server
-  #   networks:
-  #     - dev_grpc_network
-
-
   fern-app:
     build:
       context: .
       dockerfile: Dockerfile-local
     ports:
       - "8080:8080"
-
-  # grpcclient:
-  #   build:
-  #     context: ./client
-  #     dockerfile: Dockerfile.client
-  #   depends_on:
-  #     - grpc-server
-  #   networks:
-  #     - dev_grpc_network
 
 networks:
   dev_grpc_network:

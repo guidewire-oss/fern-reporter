@@ -12,17 +12,17 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"fern-reporter-mailprak/config"
-	"fern-reporter-mailprak/grpcfiles/createtestrun"
-	"fern-reporter-mailprak/grpcfiles/deletetestrun"
-	"fern-reporter-mailprak/grpcfiles/gettestrunall"
-	gtid "fern-reporter-mailprak/grpcfiles/gettestrunbyid"
-	"fern-reporter-mailprak/pkg/models"
-	"fern-reporter-mailprak/grpcfiles/processtags"
-	pb "fern-reporter-mailprak/grpcfiles/reporter"
-	"fern-reporter-mailprak/grpcfiles/reporttestrunall"
-	"fern-reporter-mailprak/grpcfiles/reporttestrunbyid"
-	"fern-reporter-mailprak/grpcfiles/updatetestrun"
+	"github.com/guidewire/fern-reporter/config"
+	"github.com/guidewire/fern-reporter/grpcfiles/createtestrun"
+	"github.com/guidewire/fern-reporter/grpcfiles/deletetestrun"
+	"github.com/guidewire/fern-reporter/grpcfiles/gettestrunall"
+	gtid "github.com/guidewire/fern-reporter/grpcfiles/gettestrunbyid"
+	"github.com/guidewire/fern-reporter/pkg/models"
+	"github.com/guidewire/fern-reporter/grpcfiles/processtags"
+	pb "github.com/guidewire/fern-reporter/grpcfiles/reporter"
+	"github.com/guidewire/fern-reporter/grpcfiles/reporttestrunall"
+	"github.com/guidewire/fern-reporter/grpcfiles/reporttestrunbyid"
+	"github.com/guidewire/fern-reporter/grpcfiles/updatetestrun"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -377,14 +377,6 @@ func StartGRPCServer(context context.Context) {
 	s := grpc.NewServer()
 	pb.RegisterReporterServer(s, &grpcServer{})
 
-
-
-	//
-	//pb.RegisterPingServiceServer(s, &server{})
-	//log.Printf("server listening at %v", lis.Addr())
-	//if err := s.Serve(lis); err != nil {
-	//	log.Fatalf("failed to serve: %v", err)
-	//}
 
 	// testid starts here
 	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
