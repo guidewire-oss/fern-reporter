@@ -9,14 +9,14 @@ import (
 	"gorm.io/gorm"
 
 	"context"
-	"html/template"
-	"log"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
+	"html/template"
+	"log"
 
 	"time"
 
@@ -50,7 +50,7 @@ func initServer() {
 	serverConfig := config.GetServer()
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
-	
+
 	if config.GetAuth().Enabled {
 		checkAuthConfig()
 		configJWTMiddleware(router)

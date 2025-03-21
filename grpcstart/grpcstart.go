@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-func main(){
+func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel() // Ensure cleanup on exit
@@ -24,5 +24,5 @@ func main(){
 	<-sigs // Wait for a shutdown signal (CTRL+C)
 	fmt.Println("Received shutdown signal, stopping gRPC server...")
 	cancel() // Cancel the context to gracefully stop the server
-	
+
 }

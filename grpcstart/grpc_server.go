@@ -17,12 +17,12 @@ import (
 	"github.com/guidewire/fern-reporter/grpcfiles/deletetestrun"
 	"github.com/guidewire/fern-reporter/grpcfiles/gettestrunall"
 	gtid "github.com/guidewire/fern-reporter/grpcfiles/gettestrunbyid"
-	"github.com/guidewire/fern-reporter/pkg/models"
 	"github.com/guidewire/fern-reporter/grpcfiles/processtags"
 	pb "github.com/guidewire/fern-reporter/grpcfiles/reporter"
 	"github.com/guidewire/fern-reporter/grpcfiles/reporttestrunall"
 	"github.com/guidewire/fern-reporter/grpcfiles/reporttestrunbyid"
 	"github.com/guidewire/fern-reporter/grpcfiles/updatetestrun"
+	"github.com/guidewire/fern-reporter/pkg/models"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -367,7 +367,7 @@ func (s *testRunServiceServer) CreateTestRun(ctx context.Context, req *createtes
 }
 
 func StartGRPCServer(context context.Context) {
-//	lis, err := net.Listen("tcp", ":50051") // Use the desired gRPC port
+	//	lis, err := net.Listen("tcp", ":50051") // Use the desired gRPC port
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 
 	if err != nil {
@@ -376,7 +376,6 @@ func StartGRPCServer(context context.Context) {
 
 	s := grpc.NewServer()
 	pb.RegisterReporterServer(s, &grpcServer{})
-
 
 	// testid starts here
 	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
