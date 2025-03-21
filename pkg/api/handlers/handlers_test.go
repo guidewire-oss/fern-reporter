@@ -106,10 +106,18 @@ var _ = Describe("Handlers", func() {
 	})
 
 	Context("when createTestRun handler is invoked", func() {
+		expectedProject := models.ProjectDetails{
+			ID:       1,
+			UUID:     "996ad860-2a9a-504f-8861-aeafd0b2ae29",
+			Name:     "Polaris Unit Test",
+			TeamName: "Nova",
+			Comment:  "",
+		}
 		It("and test run doesn't exist, it should create one and return 201 OK", func() {
 			expectedTestRun := models.TestRun{
 				ID:                0,
 				TestProjectName:   "TestProject",
+				TestProjectID:     "996ad860-2a9a-504f-8861-aeafd0b2ae29",
 				StartTime:         time.Time{},
 				EndTime:           time.Time{},
 				GitBranch:         "main",
@@ -145,9 +153,16 @@ var _ = Describe("Handlers", func() {
 				return
 			}
 
+			rows := sqlmock.NewRows([]string{"ID", "UUID"}).
+				AddRow(expectedProject.ID, expectedProject.UUID)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE uuid = $1 ORDER BY "project_details"."id" LIMIT $2`)).
+				WithArgs("996ad860-2a9a-504f-8861-aeafd0b2ae29", 1).
+				WillReturnRows(rows)
+
 			mock.ExpectBegin()
-			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","test_seed","start_time","end_time","git_branch","git_sha","build_trigger_actor","build_url") VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING "id"`)).
-				WithArgs(expectedTestRun.TestProjectName, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl).
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","project_id","test_seed","start_time","end_time","git_branch","git_sha","build_trigger_actor","build_url") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "id"`)).
+				WithArgs(expectedTestRun.TestProjectName, expectedProject.ID, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl).
 				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 			mock.ExpectCommit()
 
@@ -155,7 +170,7 @@ var _ = Describe("Handlers", func() {
 			c, _ := gin.CreateTestContext(w)
 
 			// Create a new request with JSON payload
-			jsonStr := fmt.Sprintf(`{"id": 0, "test_project_name":"TestProject", "git_branch": "%s", "git_sha": "%s", "build_trigger_actor": "%s", "build_url": "%s"}`, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl)
+			jsonStr := fmt.Sprintf(`{"id": 0, "test_project_name":"TestProject", "test_project_id":"996ad860-2a9a-504f-8861-aeafd0b2ae29", "git_branch": "%s", "git_sha": "%s", "build_trigger_actor": "%s", "build_url": "%s"}`, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl)
 			req, err := http.NewRequest("POST", "/", bytes.NewBuffer([]byte(jsonStr)))
 			if err != nil {
 				fmt.Printf("%v", err)
@@ -248,6 +263,12 @@ var _ = Describe("Handlers", func() {
 				return
 			}
 
+			rows := sqlmock.NewRows([]string{"ID", "UUID"}).
+				AddRow(expectedProject.ID, expectedProject.UUID)
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE uuid = $1 ORDER BY "project_details"."id" LIMIT $2`)).
+				WithArgs("996ad860-2a9a-504f-8861-aeafd0b2ae29", 1).
+				WillReturnRows(rows)
+
 			mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT $2`)).
 				WithArgs(expectedTestRun.ID, 1).
@@ -257,7 +278,7 @@ var _ = Describe("Handlers", func() {
 			c, _ := gin.CreateTestContext(w)
 
 			// Create a new request with JSON payload
-			jsonStr := fmt.Sprintf(`{"id": 1, "test_project_name":"TestProject", "git_branch": "%s", "git_sha": "%s", "build_trigger_actor": "%s", "build_url": "%s"}`, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl)
+			jsonStr := fmt.Sprintf(`{"id": 1, "test_project_name":"TestProject", "test_project_id":"996ad860-2a9a-504f-8861-aeafd0b2ae29", "git_branch": "%s", "git_sha": "%s", "build_trigger_actor": "%s", "build_url": "%s"}`, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl)
 			req, err := http.NewRequest("POST", "/", bytes.NewBuffer([]byte(jsonStr)))
 			if err != nil {
 				fmt.Printf("%v", err)
@@ -278,6 +299,7 @@ var _ = Describe("Handlers", func() {
 			var testRun = models.TestRun{
 				ID:                1,
 				TestProjectName:   "TestProject",
+				TestProjectID:     "996ad860-2a9a-504f-8861-aeafd0b2ae29",
 				StartTime:         time.Time{},
 				EndTime:           time.Time{},
 				GitBranch:         "main",
@@ -317,6 +339,13 @@ var _ = Describe("Handlers", func() {
 			testRuns := sqlmock.NewRows([]string{"id", "TestProjectName"}).
 				AddRow(1, "project 1")
 
+			rows := sqlmock.NewRows([]string{"ID", "UUID"}).
+				AddRow(expectedProject.ID, expectedProject.UUID)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE uuid = $1 ORDER BY "project_details"."id" LIMIT $2`)).
+				WithArgs("996ad860-2a9a-504f-8861-aeafd0b2ae29", 1).
+				WillReturnRows(rows)
+
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT $2`)).
 				WithArgs(testRun.ID, 1).
 				WillReturnRows(testRuns)
@@ -355,6 +384,7 @@ var _ = Describe("Handlers", func() {
 			var testRun = models.TestRun{
 				ID:                1,
 				TestProjectName:   "TestProject",
+				TestProjectID:     "996ad860-2a9a-504f-8861-aeafd0b2ae29",
 				StartTime:         time.Time{},
 				EndTime:           time.Time{},
 				GitBranch:         "main",
@@ -392,6 +422,13 @@ var _ = Describe("Handlers", func() {
 
 			testRuns := sqlmock.NewRows([]string{"id", "TestProjectName"}).
 				AddRow(1, "project 1")
+
+			projectRows := sqlmock.NewRows([]string{"ID", "UUID"}).
+				AddRow(expectedProject.ID, expectedProject.UUID)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE uuid = $1 ORDER BY "project_details"."id" LIMIT $2`)).
+				WithArgs("996ad860-2a9a-504f-8861-aeafd0b2ae29", 1).
+				WillReturnRows(projectRows)
 
 			//mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT $2`)).
@@ -1036,12 +1073,12 @@ var _ = Describe("Handlers", func() {
 
 	Context("When the report project handler is invoked", func() {
 		It("should return all project names in ascending order", func() {
-			projectRows := sqlmock.NewRows([]string{"test_project_name"}).
-				AddRow("ProjectA").
-				AddRow("ProjectF").
-				AddRow("ProjectZ")
+			projectRows := sqlmock.NewRows([]string{"id", "name", "uuid"}).
+				AddRow(1, "ProjectA", "uuid-1").
+				AddRow(2, "ProjectF", "uuid-2").
+				AddRow(3, "ProjectZ", "uuid-3")
 
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT DISTINCT test_project_name FROM "test_runs" ORDER BY test_project_name asc`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" ORDER BY name ASC`)).
 				WillReturnRows(projectRows)
 
 			gin.SetMode(gin.TestMode)
@@ -1054,33 +1091,35 @@ var _ = Describe("Handlers", func() {
 			router.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			expectedJSON := `{"projects":["ProjectA","ProjectF","ProjectZ"]}`
+			expectedJSON := `{"projects":[{"id":1,"name":"ProjectA","uuid":"uuid-1"},{"id":2,"name":"ProjectF","uuid":"uuid-2"},{"id":3,"name":"ProjectZ","uuid":"uuid-3"}]}`
 			Expect(w.Body.String()).To(MatchJSON(expectedJSON))
 		})
 	})
 
 	Context("When a request is made to get a test summary by project name", func() {
 		It("should return the summary of test runs for the project", func() {
-			projectName := "TestProject"
+			projectID := "1"
 			rows := sqlmock.NewRows([]string{"suite_run_id", "suite_name", "test_project_name", "start_time", "total_passed_spec_runs", "total_skipped_spec_runs", "total_spec_runs"}).
 				AddRow(1, "TestSuite1", "TestProject", time.Date(2024, 4, 20, 12, 0, 0, 0, time.UTC), 5, 1, 10).
 				AddRow(2, "TestSuite2", "TestProject", time.Date(2024, 4, 21, 12, 0, 0, 0, time.UTC), 7, 2, 12)
 
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT suite_runs.id AS suite_run_id, suite_runs.suite_name, test_runs.test_project_name, 
-			   test_runs.start_time, COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'passed') AS total_passed_spec_runs, 
-			   COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'skipped') AS total_skipped_spec_runs, COUNT(spec_runs.id) 
-           		AS total_spec_runs FROM "test_runs" INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id 
-				  INNER JOIN spec_runs ON suite_runs.id = spec_runs.suite_id 
-				  WHERE test_runs.test_project_name = $1 
-				  GROUP BY suite_runs.id, test_runs.test_project_name, test_runs.start_time 
-				  ORDER BY test_runs.start_time`)).WithArgs(projectName).WillReturnRows(rows)
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT suite_runs.id AS suite_run_id, 
+			suite_runs.suite_name,
+            test_runs.start_time, 
+            COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'passed') AS total_passed_spec_runs, 
+			COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'skipped') AS total_skipped_spec_runs, 
+            COUNT(spec_runs.id) AS total_spec_runs FROM "test_runs" 
+                INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id 
+                INNER JOIN spec_runs ON suite_runs.id = spec_runs.suite_id 
+                WHERE test_runs.project_id = $1 
+                GROUP BY suite_runs.id, test_runs.start_time ORDER BY test_runs.start_time`)).WithArgs(projectID).WillReturnRows(rows)
 
 			w := httptest.NewRecorder()
 			c, router := gin.CreateTestContext(w)
 			handler := handlers.NewHandler(gormDb)
 
-			c.Request, _ = http.NewRequest("GET", "/summary/TestProject/", nil)
-			router.GET("/summary/:name/", handler.GetTestSummary)
+			c.Request, _ = http.NewRequest("GET", "/summary/1/", nil)
+			router.GET("/summary/:projectId/", handler.GetTestSummary)
 			router.ServeHTTP(w, c.Request)
 
 			Expect(w.Code).To(Equal(http.StatusOK))

@@ -36,9 +36,16 @@ func RegisterRouters(router *gin.Engine) {
 
 		testReport := api.Group("/reports")
 		testReport.GET("/projects/", handler.GetProjectAll)
-		testReport.GET("/summary/:name/", handler.GetTestSummary)
+		testReport.GET("/summary/:projectId/", handler.GetTestSummary)
 		testReport.GET("/testruns/", handler.ReportTestRunAll)
 		testReport.GET("/testruns/:id/", handler.ReportTestRunById)
+
+		// Project specific API methods
+		project := api.Group("/project")
+		project.GET("/", handler.GetAllProjects)
+		project.POST("/", handler.CreateProject)
+		project.PUT("/:uuid", handler.UpdateProject)
+		project.DELETE("/:uuid", handler.DeleteProject)
 	}
 
 	var reports *gin.RouterGroup
