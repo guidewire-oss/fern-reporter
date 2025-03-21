@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm"
 
 	"context"
-
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"

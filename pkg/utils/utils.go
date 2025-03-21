@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"encoding/base64"
-	"fmt"
 	"github.com/guidewire/fern-reporter/pkg/models"
 	"time"
+	"encoding/base64"
+	"fmt"
 )
 
 const (
