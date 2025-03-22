@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package reporttestrunall;
+
+option go_package = "./;reporttestrunall";
+
+// Request and Response messages
+message ReportTestRunAllRequest {}
+
+message Tag {
+  string name = 1;
+}
+
+message SpecRun {
+  repeated Tag tags = 1;
+}
+
+message SuiteRun {
+  repeated SpecRun specRuns = 1;
+}
+
+message TestRun {
+  string id = 1;
+  repeated SuiteRun suiteRuns = 2;
+}
+
+message ReportTestRunAllResponse {
+  string reportHeader = 1;
+  repeated TestRun testRuns = 2;
+}
+
+// Service definition
+service TestRunService {
+  rpc ReportTestRunAll(ReportTestRunAllRequest) returns (ReportTestRunAllResponse);
+}
+

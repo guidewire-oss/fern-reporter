@@ -29,3 +29,27 @@ services:
       - 5050:80
     volumes:
       - ./docker/servers.json:/pgadmin4/servers.json
+
+  grpc-server:
+    build:
+      context: ./
+      dockerfile: Dockerfile-grpc
+    container_name: grpc-server
+    # networks:
+    #   - dev_grpc_network      
+    ports:
+      - "50051:50051"
+    depends_on:
+      - fern-app
+
+  fern-app:
+    build:
+      context: .
+      dockerfile: Dockerfile-local
+    ports:
+      - "8080:8080"
+
+# networks:
+#   dev_grpc_network:
+#       external: true      
+  

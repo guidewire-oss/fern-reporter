@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package gettestrunall;
+
+option go_package = "./;gettestrunall";
+
+service TestService {
+  rpc GetTestRunAll (EmptyRequest) returns (TestRunList) {}
+}
+
+message EmptyRequest {}
+
+message TestRun {
+  uint64 id = 1;
+  string SpecDescription = 2;
+  string Status = 3;
+  // Add other fields based on your `TestRun` model.
+}
+
+message TestRunList {
+  repeated TestRun test_runs = 1;
+}
