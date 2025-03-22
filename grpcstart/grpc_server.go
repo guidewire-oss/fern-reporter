@@ -209,7 +209,7 @@ func (s *Server) UpdateTestRun(ctx context.Context, req *updatetestrun.UpdateTes
 	}
 
 	// Update the fields of testRun based on the request
-	testRun.Name = req.GetName() // Update the necessary fields
+	testRun.TestProjectName = req.GetName() // Update the necessary fields
 
 	// Save the updated TestRun in the database
 	if err := s.db.Save(&testRun).Error; err != nil {
@@ -225,7 +225,7 @@ func (s *Server) UpdateTestRun(ctx context.Context, req *updatetestrun.UpdateTes
 		Message: "TestRun updated successfully",
 		TestRun: &updatetestrun.TestRun{
 			Id:   strconv.FormatUint(testRun.ID, 10),
-			Name: testRun.Name, // Include other fields as needed
+			Name: testRun.TestProjectName, // Include other fields as needed
 		},
 	}, nil
 }
@@ -351,7 +351,7 @@ func (s *testRunServiceServer) CreateTestRun(ctx context.Context, req *createtes
 	// Save or update the TestRun record
 	testRunModel := models.TestRun{
 		ID:   uint64(testRun.GetId()),
-		Name: testRun.GetName(),
+		TestProjectName: testRun.GetName(),
 		// Map other fields as needed
 	}
 
@@ -362,7 +362,7 @@ func (s *testRunServiceServer) CreateTestRun(ctx context.Context, req *createtes
 	// Return the saved test run as part of the response
 	return &createtestrun.CreateTestRunResponse{
 		Success: true,
-		TestRun: &createtestrun.TestRun{Id: int64(testRunModel.ID), Name: testRunModel.Name}, // Map other fields
+		TestRun: &createtestrun.TestRun{Id: int64(testRunModel.ID), Name: testRunModel.TestProjectName}, // Map other fields
 	}, nil
 }
 

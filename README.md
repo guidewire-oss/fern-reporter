@@ -96,6 +96,13 @@ To view the test reports using the React-based Fern-UI frontend, follow these st
 ### Accessing Test Reports using the API
 Reports are also available as JSON at `http://[host-url]/api/reports/testruns`.
 
+## gRpc Support
+Start the server as below: The server will be started listening in port 50051
+The gRpc server will be started along with the fern server
+
+- docker-compose up
+
+
 ### Additional Resources
 
 - [Deploying fern reporter service in kubernetes using kubevela](docs/kubevela/README.md)
