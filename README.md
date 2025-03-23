@@ -102,6 +102,10 @@ The gRpc server will be started along with the fern server
 
 - docker-compose up
 
+The gRpc server listens on port 50051
+The startup for gRpc is in : <repo>/grpcstart
+The proto files are in : <repo>/grpcfiles
+
 
 ### Additional Resources
 
