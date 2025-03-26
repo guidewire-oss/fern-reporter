@@ -1,0 +1,33 @@
+# Use the official Golang image as the builder
+FROM golang:1.23.4 AS builder
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy Go modules manifest files and download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the entire project, including the grpcstart folder
+COPY . .
+
+# Build the application (referencing files inside grpcstart)
+RUN go build -o grpcserver ./grpcstart
+
+# Use an Ubuntu-based image that has GLIBC 2.34+
+FROM ubuntu:22.04
+
+# Set the working directory in the final container
+WORKDIR /app
+
+# Install necessary libraries (optional, if needed)
+RUN apt update && apt install -y libstdc++6
+
+# Copy the built binary from the builder stage
+COPY --from=builder /app/grpcserver .
+
+# Expose the gRPC server port
+EXPOSE 50051
+
+# Run the application
+CMD ["./grpcserver"]
