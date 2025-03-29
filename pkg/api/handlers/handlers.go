@@ -34,8 +34,23 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 		return // Stop further processing if there is a binding error
 	}
 
+	// Validate that UUID is provided
+	if testRun.TestProjectID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Project UUID is required"})
+		return
+	}
+
 	gdb := h.db
 	isNewRecord := testRun.ID == 0
+
+	//Check if UUID is already exists and get the Project Name
+	projectID, err := getProjectIDByUUID(h.db, testRun.TestProjectID)
+
+	if err != nil || projectID == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Project ID %s not found", testRun.TestProjectID)})
+		return
+	}
+	testRun.ProjectID = projectID
 
 	// If it's not a new record, try to find it first
 	if !isNewRecord {
@@ -46,7 +61,7 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 	}
 
 	// Process tags
-	err := ProcessTags(gdb, &testRun)
+	err = ProcessTags(gdb, &testRun)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error processing tags"})
 		return // Stop further processing if tag processing fails
@@ -59,6 +74,13 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, &testRun)
+}
+func getProjectIDByUUID(db *gorm.DB, uuid string) (uint64, error) {
+	var project models.ProjectDetails
+	if err := db.Where("uuid = ?", uuid).First(&project).Error; err != nil {
+		return 0, err
+	}
+	return project.ID, nil
 }
 
 func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {
@@ -239,19 +261,111 @@ func (h *Handler) ReportTestInsights(c *gin.Context) {
 }
 
 func (h *Handler) GetProjectAll(c *gin.Context) {
-	var projectNames []string
-	h.db.Table("test_runs").
-		Distinct("test_project_name").
-		Order("test_project_name asc").
-		Pluck("test_project_name", &projectNames)
+	var projects []struct {
+		ID   uint64 `json:"id"`
+		Name string `json:"name"`
+		UUID string `json:"uuid"`
+	}
+	h.db.Table("project_details").
+		Order("name ASC").
+		Find(&projects)
+
 	c.JSON(http.StatusOK, gin.H{
-		"projects": projectNames,
+		"projects": projects,
 	})
 }
 
+func (h *Handler) CreateProject(c *gin.Context) {
+	var project models.ProjectDetails
+	var existingProject models.ProjectDetails
+
+	if err := c.ShouldBindJSON(&project); err != nil {
+		fmt.Print(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return // Stop further processing if there is a binding error
+
+	}
+	gdb := h.db
+	// Check if a project with the same name already exists
+	if err := gdb.Where("name = ?", project.Name).First(&existingProject).Error; err == nil {
+		// If no error, it means the project exists
+		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Project name '%s' already exists", project.Name)})
+		return
+	} else if err := gdb.Save(&project).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error saving record"})
+		return // Stop further processing if save fails
+	}
+
+	gdb.First(&project, project.ID)
+	c.JSON(http.StatusCreated, &project)
+}
+
+func (h *Handler) GetAllProjects(c *gin.Context) {
+	var projects []models.ProjectDetails
+
+	gdb := h.db
+	if err := gdb.Find(&projects).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching projects"})
+		return
+	}
+
+	c.JSON(http.StatusOK, projects)
+}
+
+func (h *Handler) UpdateProject(c *gin.Context) {
+	uuid := c.Param("uuid") // Get UUID from URL parameter
+	var project models.ProjectDetails
+
+	gdb := h.db
+
+	// Check if project with given UUID exists
+	if err := gdb.Where("uuid = ?", uuid).First(&project).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Project with UUID '%s' not found", uuid)})
+		return
+	}
+
+	// Bind request JSON to project struct
+	if err := c.ShouldBindJSON(&project); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Manually update the updated_at timestamp
+	project.UpdatedAt = time.Now()
+
+	// Save updated project details
+	if err := gdb.Save(&project).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating project"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Project updated successfully", "project": project})
+}
+
+func (h *Handler) DeleteProject(c *gin.Context) {
+	uuid := c.Param("uuid") // Get UUID from URL parameter
+	var project models.ProjectDetails
+
+	gdb := h.db
+
+	// Check if project exists
+	if err := gdb.Where("uuid = ?", uuid).First(&project).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Project with UUID '%s' not found", uuid)})
+		return
+	}
+
+	// Delete project from DB
+	if err := gdb.Delete(&project).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting project"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Project with UUID '%s' deleted successfully", uuid)})
+}
+
 func (h *Handler) GetTestSummary(c *gin.Context) {
-	projectName := c.Param("name")
-	testSummaries := GetProjectSpecStatistics(h, projectName)
+	projectId := c.Param("projectId")
+	testSummaries := GetProjectSpecStatistics(h, projectId)
 
 	c.JSON(http.StatusOK, testSummaries)
 }
