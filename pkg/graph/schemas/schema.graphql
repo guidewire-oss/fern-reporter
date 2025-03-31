@@ -29,6 +29,10 @@ type TestRun {
   testSeed: Int
   startTime: String
   endTime: String
+  gitBranch: String
+  gitSha: String
+  buildTriggerActor: String
+  buildUrl: String
   suiteRuns: [SuiteRun!]!
 }
 

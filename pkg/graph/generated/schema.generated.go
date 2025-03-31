@@ -28,9 +28,9 @@ type QueryResolver interface {
 
 // region    ***************************** args.gotpl *****************************
 
-func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
-	args := map[string]interface{}{}
+	args := map[string]any{}
 	arg0, err := ec.field_Query___type_argsName(ctx, rawArgs)
 	if err != nil {
 		return nil, err
@@ -40,13 +40,9 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 }
 func (ec *executionContext) field_Query___type_argsName(
 	ctx context.Context,
-	rawArgs map[string]interface{},
+	rawArgs map[string]any,
 ) (string, error) {
-	// We won't call the directive if the argument is null.
-	// Set call_argument_directives_with_null to true to call directives
-	// even if the argument is null.
-	_, ok := rawArgs["name"]
-	if !ok {
+	if _, ok := rawArgs["name"]; !ok {
 		var zeroVal string
 		return zeroVal, nil
 	}
@@ -60,9 +56,9 @@ func (ec *executionContext) field_Query___type_argsName(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Query_testRunById_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_testRunById_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
-	args := map[string]interface{}{}
+	args := map[string]any{}
 	arg0, err := ec.field_Query_testRunById_argsID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
@@ -72,13 +68,9 @@ func (ec *executionContext) field_Query_testRunById_args(ctx context.Context, ra
 }
 func (ec *executionContext) field_Query_testRunById_argsID(
 	ctx context.Context,
-	rawArgs map[string]interface{},
+	rawArgs map[string]any,
 ) (int, error) {
-	// We won't call the directive if the argument is null.
-	// Set call_argument_directives_with_null to true to call directives
-	// even if the argument is null.
-	_, ok := rawArgs["id"]
-	if !ok {
+	if _, ok := rawArgs["id"]; !ok {
 		var zeroVal int
 		return zeroVal, nil
 	}
@@ -92,9 +84,9 @@ func (ec *executionContext) field_Query_testRunById_argsID(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Query_testRun_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_testRun_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
-	args := map[string]interface{}{}
+	args := map[string]any{}
 	arg0, err := ec.field_Query_testRun_argsTestRunFilter(ctx, rawArgs)
 	if err != nil {
 		return nil, err
@@ -104,13 +96,9 @@ func (ec *executionContext) field_Query_testRun_args(ctx context.Context, rawArg
 }
 func (ec *executionContext) field_Query_testRun_argsTestRunFilter(
 	ctx context.Context,
-	rawArgs map[string]interface{},
+	rawArgs map[string]any,
 ) (modelv2.TestRunFilter, error) {
-	// We won't call the directive if the argument is null.
-	// Set call_argument_directives_with_null to true to call directives
-	// even if the argument is null.
-	_, ok := rawArgs["testRunFilter"]
-	if !ok {
+	if _, ok := rawArgs["testRunFilter"]; !ok {
 		var zeroVal modelv2.TestRunFilter
 		return zeroVal, nil
 	}
@@ -124,9 +112,9 @@ func (ec *executionContext) field_Query_testRun_argsTestRunFilter(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Query_testRuns_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_testRuns_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
-	args := map[string]interface{}{}
+	args := map[string]any{}
 	arg0, err := ec.field_Query_testRuns_argsFirst(ctx, rawArgs)
 	if err != nil {
 		return nil, err
@@ -146,13 +134,9 @@ func (ec *executionContext) field_Query_testRuns_args(ctx context.Context, rawAr
 }
 func (ec *executionContext) field_Query_testRuns_argsFirst(
 	ctx context.Context,
-	rawArgs map[string]interface{},
+	rawArgs map[string]any,
 ) (*int, error) {
-	// We won't call the directive if the argument is null.
-	// Set call_argument_directives_with_null to true to call directives
-	// even if the argument is null.
-	_, ok := rawArgs["first"]
-	if !ok {
+	if _, ok := rawArgs["first"]; !ok {
 		var zeroVal *int
 		return zeroVal, nil
 	}
@@ -168,13 +152,9 @@ func (ec *executionContext) field_Query_testRuns_argsFirst(
 
 func (ec *executionContext) field_Query_testRuns_argsAfter(
 	ctx context.Context,
-	rawArgs map[string]interface{},
+	rawArgs map[string]any,
 ) (*string, error) {
-	// We won't call the directive if the argument is null.
-	// Set call_argument_directives_with_null to true to call directives
-	// even if the argument is null.
-	_, ok := rawArgs["after"]
-	if !ok {
+	if _, ok := rawArgs["after"]; !ok {
 		var zeroVal *string
 		return zeroVal, nil
 	}
@@ -190,13 +170,9 @@ func (ec *executionContext) field_Query_testRuns_argsAfter(
 
 func (ec *executionContext) field_Query_testRuns_argsDesc(
 	ctx context.Context,
-	rawArgs map[string]interface{},
+	rawArgs map[string]any,
 ) (*bool, error) {
-	// We won't call the directive if the argument is null.
-	// Set call_argument_directives_with_null to true to call directives
-	// even if the argument is null.
-	_, ok := rawArgs["desc"]
-	if !ok {
+	if _, ok := rawArgs["desc"]; !ok {
 		var zeroVal *bool
 		return zeroVal, nil
 	}
@@ -230,7 +206,7 @@ func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field gra
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.HasNextPage, nil
 	})
@@ -274,7 +250,7 @@ func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.HasPreviousPage, nil
 	})
@@ -318,7 +294,7 @@ func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field gra
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.StartCursor, nil
 	})
@@ -362,7 +338,7 @@ func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graph
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.EndCursor, nil
 	})
@@ -406,7 +382,7 @@ func (ec *executionContext) _Query_testRuns(ctx context.Context, field graphql.C
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Query().TestRuns(rctx, fc.Args["first"].(*int), fc.Args["after"].(*string), fc.Args["desc"].(*bool))
 	})
@@ -469,7 +445,7 @@ func (ec *executionContext) _Query_testRun(ctx context.Context, field graphql.Co
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Query().TestRun(rctx, fc.Args["testRunFilter"].(modelv2.TestRunFilter))
 	})
@@ -506,6 +482,14 @@ func (ec *executionContext) fieldContext_Query_testRun(ctx context.Context, fiel
 				return ec.fieldContext_TestRun_startTime(ctx, field)
 			case "endTime":
 				return ec.fieldContext_TestRun_endTime(ctx, field)
+			case "gitBranch":
+				return ec.fieldContext_TestRun_gitBranch(ctx, field)
+			case "gitSha":
+				return ec.fieldContext_TestRun_gitSha(ctx, field)
+			case "buildTriggerActor":
+				return ec.fieldContext_TestRun_buildTriggerActor(ctx, field)
+			case "buildUrl":
+				return ec.fieldContext_TestRun_buildUrl(ctx, field)
 			case "suiteRuns":
 				return ec.fieldContext_TestRun_suiteRuns(ctx, field)
 			}
@@ -538,7 +522,7 @@ func (ec *executionContext) _Query_testRunById(ctx context.Context, field graphq
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Query().TestRunByID(rctx, fc.Args["id"].(int))
 	})
@@ -572,6 +556,14 @@ func (ec *executionContext) fieldContext_Query_testRunById(ctx context.Context, 
 				return ec.fieldContext_TestRun_startTime(ctx, field)
 			case "endTime":
 				return ec.fieldContext_TestRun_endTime(ctx, field)
+			case "gitBranch":
+				return ec.fieldContext_TestRun_gitBranch(ctx, field)
+			case "gitSha":
+				return ec.fieldContext_TestRun_gitSha(ctx, field)
+			case "buildTriggerActor":
+				return ec.fieldContext_TestRun_buildTriggerActor(ctx, field)
+			case "buildUrl":
+				return ec.fieldContext_TestRun_buildUrl(ctx, field)
 			case "suiteRuns":
 				return ec.fieldContext_TestRun_suiteRuns(ctx, field)
 			}
@@ -604,7 +596,7 @@ func (ec *executionContext) _Query___type(ctx context.Context, field graphql.Col
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.introspectType(fc.Args["name"].(string))
 	})
@@ -634,6 +626,8 @@ func (ec *executionContext) fieldContext_Query___type(ctx context.Context, field
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -646,8 +640,8 @@ func (ec *executionContext) fieldContext_Query___type(ctx context.Context, field
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
+			case "isOneOf":
+				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Type", field.Name)
 		},
@@ -678,7 +672,7 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.introspectSchema()
 	})
@@ -733,7 +727,7 @@ func (ec *executionContext) _SpecRun_id(ctx context.Context, field graphql.Colle
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.ID, nil
 	})
@@ -774,7 +768,7 @@ func (ec *executionContext) _SpecRun_suiteId(ctx context.Context, field graphql.
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.SuiteID, nil
 	})
@@ -815,7 +809,7 @@ func (ec *executionContext) _SpecRun_specDescription(ctx context.Context, field 
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.SpecDescription, nil
 	})
@@ -856,7 +850,7 @@ func (ec *executionContext) _SpecRun_status(ctx context.Context, field graphql.C
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Status, nil
 	})
@@ -897,7 +891,7 @@ func (ec *executionContext) _SpecRun_message(ctx context.Context, field graphql.
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Message, nil
 	})
@@ -938,7 +932,7 @@ func (ec *executionContext) _SpecRun_startTime(ctx context.Context, field graphq
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.StartTime, nil
 	})
@@ -979,7 +973,7 @@ func (ec *executionContext) _SpecRun_endTime(ctx context.Context, field graphql.
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.EndTime, nil
 	})
@@ -1020,7 +1014,7 @@ func (ec *executionContext) _SpecRun_tags(ctx context.Context, field graphql.Col
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Tags, nil
 	})
@@ -1067,7 +1061,7 @@ func (ec *executionContext) _SuiteRun_id(ctx context.Context, field graphql.Coll
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.ID, nil
 	})
@@ -1111,7 +1105,7 @@ func (ec *executionContext) _SuiteRun_testRunId(ctx context.Context, field graph
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.TestRunID, nil
 	})
@@ -1155,7 +1149,7 @@ func (ec *executionContext) _SuiteRun_suiteName(ctx context.Context, field graph
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.SuiteName, nil
 	})
@@ -1196,7 +1190,7 @@ func (ec *executionContext) _SuiteRun_startTime(ctx context.Context, field graph
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.StartTime, nil
 	})
@@ -1237,7 +1231,7 @@ func (ec *executionContext) _SuiteRun_endTime(ctx context.Context, field graphql
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.EndTime, nil
 	})
@@ -1278,7 +1272,7 @@ func (ec *executionContext) _SuiteRun_specRuns(ctx context.Context, field graphq
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.SpecRuns, nil
 	})
@@ -1337,7 +1331,7 @@ func (ec *executionContext) _Tag_id(ctx context.Context, field graphql.Collected
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.ID, nil
 	})
@@ -1378,7 +1372,7 @@ func (ec *executionContext) _Tag_name(ctx context.Context, field graphql.Collect
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Name, nil
 	})
@@ -1419,7 +1413,7 @@ func (ec *executionContext) _TestRun_id(ctx context.Context, field graphql.Colle
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.ID, nil
 	})
@@ -1463,7 +1457,7 @@ func (ec *executionContext) _TestRun_testProjectName(ctx context.Context, field 
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.TestProjectName, nil
 	})
@@ -1504,7 +1498,7 @@ func (ec *executionContext) _TestRun_testSeed(ctx context.Context, field graphql
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.TestSeed, nil
 	})
@@ -1545,7 +1539,7 @@ func (ec *executionContext) _TestRun_startTime(ctx context.Context, field graphq
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.StartTime, nil
 	})
@@ -1586,7 +1580,7 @@ func (ec *executionContext) _TestRun_endTime(ctx context.Context, field graphql.
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.EndTime, nil
 	})
@@ -1615,6 +1609,170 @@ func (ec *executionContext) fieldContext_TestRun_endTime(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _TestRun_gitBranch(ctx context.Context, field graphql.CollectedField, obj *modelv2.TestRun) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestRun_gitBranch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GitBranch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestRun_gitBranch(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestRun_gitSha(ctx context.Context, field graphql.CollectedField, obj *modelv2.TestRun) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestRun_gitSha(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GitSha, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestRun_gitSha(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestRun_buildTriggerActor(ctx context.Context, field graphql.CollectedField, obj *modelv2.TestRun) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestRun_buildTriggerActor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildTriggerActor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestRun_buildTriggerActor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TestRun_buildUrl(ctx context.Context, field graphql.CollectedField, obj *modelv2.TestRun) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TestRun_buildUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TestRun_buildUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TestRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TestRun_suiteRuns(ctx context.Context, field graphql.CollectedField, obj *modelv2.TestRun) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TestRun_suiteRuns(ctx, field)
 	if err != nil {
@@ -1627,7 +1785,7 @@ func (ec *executionContext) _TestRun_suiteRuns(ctx context.Context, field graphq
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.SuiteRuns, nil
 	})
@@ -1685,7 +1843,7 @@ func (ec *executionContext) _TestRunConnection_edges(ctx context.Context, field 
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Edges, nil
 	})
@@ -1735,7 +1893,7 @@ func (ec *executionContext) _TestRunConnection_pageInfo(ctx context.Context, fie
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.PageInfo, nil
 	})
@@ -1789,7 +1947,7 @@ func (ec *executionContext) _TestRunConnection_totalCount(ctx context.Context, f
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.TotalCount, nil
 	})
@@ -1833,7 +1991,7 @@ func (ec *executionContext) _TestRunEdge_cursor(ctx context.Context, field graph
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Cursor, nil
 	})
@@ -1877,7 +2035,7 @@ func (ec *executionContext) _TestRunEdge_testRun(ctx context.Context, field grap
 			ret = graphql.Null
 		}
 	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.TestRun, nil
 	})
@@ -1914,6 +2072,14 @@ func (ec *executionContext) fieldContext_TestRunEdge_testRun(_ context.Context, 
 				return ec.fieldContext_TestRun_startTime(ctx, field)
 			case "endTime":
 				return ec.fieldContext_TestRun_endTime(ctx, field)
+			case "gitBranch":
+				return ec.fieldContext_TestRun_gitBranch(ctx, field)
+			case "gitSha":
+				return ec.fieldContext_TestRun_gitSha(ctx, field)
+			case "buildTriggerActor":
+				return ec.fieldContext_TestRun_buildTriggerActor(ctx, field)
+			case "buildUrl":
+				return ec.fieldContext_TestRun_buildUrl(ctx, field)
 			case "suiteRuns":
 				return ec.fieldContext_TestRun_suiteRuns(ctx, field)
 			}
@@ -1927,10 +2093,10 @@ func (ec *executionContext) fieldContext_TestRunEdge_testRun(_ context.Context, 
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputTestRunFilter(ctx context.Context, obj interface{}) (modelv2.TestRunFilter, error) {
+func (ec *executionContext) unmarshalInputTestRunFilter(ctx context.Context, obj any) (modelv2.TestRunFilter, error) {
 	var it modelv2.TestRunFilter
-	asMap := map[string]interface{}{}
-	for k, v := range obj.(map[string]interface{}) {
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
 	}
 
@@ -2300,6 +2466,14 @@ func (ec *executionContext) _TestRun(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._TestRun_startTime(ctx, field, obj)
 		case "endTime":
 			out.Values[i] = ec._TestRun_endTime(ctx, field, obj)
+		case "gitBranch":
+			out.Values[i] = ec._TestRun_gitBranch(ctx, field, obj)
+		case "gitSha":
+			out.Values[i] = ec._TestRun_gitSha(ctx, field, obj)
+		case "buildTriggerActor":
+			out.Values[i] = ec._TestRun_buildTriggerActor(ctx, field, obj)
+		case "buildUrl":
+			out.Values[i] = ec._TestRun_buildUrl(ctx, field, obj)
 		case "suiteRuns":
 			out.Values[i] = ec._TestRun_suiteRuns(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -2611,7 +2785,7 @@ func (ec *executionContext) marshalNTestRunEdge2ᚖgithubᚗcomᚋguidewireᚋfe
 	return ec._TestRunEdge(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNTestRunFilter2githubᚗcomᚋguidewireᚋfernᚑreporterᚋpkgᚋgraphᚋmodelv2ᚐTestRunFilter(ctx context.Context, v interface{}) (modelv2.TestRunFilter, error) {
+func (ec *executionContext) unmarshalNTestRunFilter2githubᚗcomᚋguidewireᚋfernᚑreporterᚋpkgᚋgraphᚋmodelv2ᚐTestRunFilter(ctx context.Context, v any) (modelv2.TestRunFilter, error) {
 	res, err := ec.unmarshalInputTestRunFilter(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
