@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package deletetestrun;
+
+option go_package = "./;deletetestrun";
+
+// Request and Response messages
+message DeleteTestRunRequest {
+  string id = 1; // Test run ID as a string
+}
+
+message DeleteTestRunResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Service definition
+service TestRunService {
+  rpc DeleteTestRun(DeleteTestRunRequest) returns (DeleteTestRunResponse);
+}
+

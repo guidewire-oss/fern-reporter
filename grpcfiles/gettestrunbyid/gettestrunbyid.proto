@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option go_package = "./;gettestrunbyid";
+
+package mypackage;
+
+service TestRunService {
+    rpc GetTestRunByID (GetTestRunByIDRequest) returns (GetTestRunByIDResponse);
+}
+
+message GetTestRunByIDRequest {
+    string id = 1;
+}
+
+message TestRun {
+    string id = 1;
+    // Add other fields of your TestRun model here
+}
+
+message GetTestRunByIDResponse {
+    TestRun test_run = 1;
+}

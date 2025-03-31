@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package reporter;
+
+option go_package = "./;reporter";
+
+service Reporter {
+    rpc SendReport (ReportRequest) returns (ReportResponse);
+}
+
+message ReportRequest {
+    string message = 1;
+}
+
+message ReportResponse {
+    string status = 1;
+}

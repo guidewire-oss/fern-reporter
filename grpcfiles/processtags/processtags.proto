@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package processtags;
+
+option go_package = "./;processtags";
+
+service TagService {
+    rpc ProcessTags(ProcessTagsRequest) returns (ProcessTagsResponse);
+}
+
+message ProcessTagsRequest {
+    TestRun test_run = 1;
+}
+
+message ProcessTagsResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+message TestRun {
+    repeated SuiteRun suite_runs = 1;
+}
+
+message SuiteRun {
+    repeated SpecRun spec_runs = 1;
+}
+
+message SpecRun {
+    repeated Tag tags = 1;
+}
+
+message Tag {
+    string name = 1;
+}
+

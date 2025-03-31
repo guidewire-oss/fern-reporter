@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package updatetestrun;
+
+option go_package = "./;updatetestrun";
+
+service TestRunService {
+    rpc UpdateTestRun(UpdateTestRunRequest) returns (TestRunResponse);
+}
+
+message UpdateTestRunRequest {
+    string id = 1;
+    string name = 2;  // Add all necessary fields based on the TestRun model
+    // Include other fields that TestRun has
+}
+
+message TestRunResponse {
+    bool success = 1;
+    string message = 2;
+    TestRun test_run = 3;
+}
+
+message TestRun {
+    string id = 1;
+    string name = 2;
+    // Add other fields from TestRun here
+}
+
