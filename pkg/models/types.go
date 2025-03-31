@@ -12,6 +12,8 @@ type TimeLog struct {
 type TestRun struct {
 	ID                uint64     `json:"id" gorm:"primaryKey"`
 	TestProjectName   string     `json:"test_project_name"`
+	TestProjectID     string     `json:"test_project_id" gorm:"-"`
+	ProjectID         uint64     `json:"project_id" gorm:"column:project_id"` // Foreign key
 	TestSeed          uint64     `json:"test_seed"`
 	StartTime         time.Time  `json:"start_time"`
 	EndTime           time.Time  `json:"end_time"`
@@ -20,6 +22,9 @@ type TestRun struct {
 	BuildTriggerActor string     `json:"build_trigger_actor"`
 	BuildUrl          string     `json:"build_url"`
 	SuiteRuns         []SuiteRun `json:"suite_runs" gorm:"foreignKey:TestRunID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+
+	// Relationship with ProjectDetails
+	Project ProjectDetails `gorm:"foreignKey:ProjectID;references:ID"`
 }
 
 type SuiteRun struct {
@@ -63,4 +68,14 @@ type TestSummary struct {
 type Tag struct {
 	ID   uint64 `json:"id" gorm:"primaryKey"`
 	Name string `json:"name"`
+}
+
+type ProjectDetails struct {
+	ID        uint64    `json:"-" gorm:"primaryKey"`
+	UUID      string    `json:"uuid" gorm:"->;column:uuid"`
+	Name      string    `json:"name"`
+	TeamName  string    `json:"team_name"`
+	Comment   string    `json:"comment"`
+	CreatedAt time.Time `json:"created_at" gorm:"default:CURRENT_TIMESTAMP"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

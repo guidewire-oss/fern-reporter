@@ -54,7 +54,7 @@ var _ = Describe("Handlers", func() {
 			rows := sqlmock.NewRows([]string{"ID", "TestProjectName", "TestSeed"}).
 				AddRow(1, "project 1", "1")
 
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" ORDER BY id ASC LIMIT \$1`).
+			mock.ExpectQuery(`SELECT test_runs.*, project_details.uuid, project_details.name AS test_project_name, project_details.team_name FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id ORDER BY id ASC LIMIT \$1`).
 				WithArgs(1).
 				WillReturnRows(rows)
 
@@ -182,7 +182,7 @@ var _ = Describe("Handlers", func() {
 				AddRow(2, "project 2", 2)
 
 			// Expectation for the test_runs query to retrieve the actual records
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" ORDER BY id ASC LIMIT \$1`).
+			mock.ExpectQuery(`SELECT test_runs.*, project_details.uuid, project_details.name AS test_project_name, project_details.team_name FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id ORDER BY id ASC LIMIT \$1`).
 				WithArgs(2).
 				WillReturnRows(rows)
 
@@ -286,7 +286,7 @@ var _ = Describe("Handlers", func() {
 			countRows := sqlmock.NewRows([]string{"count"}).AddRow(0)
 
 			// Expectation for the data query
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" ORDER BY id ASC LIMIT \$1`).
+			mock.ExpectQuery(`SELECT test_runs.*, project_details.uuid, project_details.name AS test_project_name, project_details.team_name FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id ORDER BY id ASC LIMIT \$1`).
 				WithArgs(0).
 				WillReturnRows(rows)
 
@@ -344,7 +344,7 @@ var _ = Describe("Handlers", func() {
 				AddRow(2, "project 2", 2).
 				AddRow(3, "project 3", 3)
 
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" ORDER BY id ASC LIMIT \$1`).
+			mock.ExpectQuery(`SELECT test_runs.*, project_details.uuid, project_details.name AS test_project_name, project_details.team_name FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id ORDER BY id ASC LIMIT \$1`).
 				WithArgs(5).
 				WillReturnRows(rows)
 
@@ -443,7 +443,7 @@ var _ = Describe("Handlers", func() {
 				AddRow(4, "project 4", 4)
 
 			// Mocking the expected SQL queries and results in the correct order
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" ORDER BY id DESC LIMIT $1 OFFSET $2`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT test_runs.*, project_details.uuid, project_details.name AS test_project_name, project_details.team_name FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id ORDER BY id DESC LIMIT $1 OFFSET $2`)).
 				WithArgs(first, 2). // first=2, after=2 means starting from 3rd record
 				WillReturnRows(testRuns)
 
@@ -513,7 +513,8 @@ var _ = Describe("Handlers", func() {
 				AddRow(3, "project 3", 3)
 
 			// Mocking the expected SQL queries and results in the correct order
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" ORDER BY id DESC LIMIT $1 OFFSET $2`)).
+			//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" ORDER BY id DESC LIMIT $1 OFFSET $2`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT test_runs.*, project_details.uuid, project_details.name AS test_project_name, project_details.team_name FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id ORDER BY id DESC LIMIT $1 OFFSET $2`)).
 				WithArgs(first, 2). // first=1, after=2 means starting from 3rd record
 				WillReturnRows(testRuns)
 
@@ -575,7 +576,8 @@ var _ = Describe("Handlers", func() {
 			desc := true
 			ctx := context.Background()
 			// Mock the query to fetch test runs with an error
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" .*`).
+			//mock.ExpectQuery(`SELECT \* FROM "test_runs" .*`).
+			mock.ExpectQuery(`SELECT test_runs.*, project_details.uuid, project_details.name AS test_project_name, project_details.team_name FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id ORDER BY id DESC`).
 				WillReturnError(errors.New("database error when fetching test_runs"))
 
 			// Act: Call the TestRuns method
@@ -594,7 +596,7 @@ var _ = Describe("Handlers", func() {
 			desc := true
 			ctx := context.Background()
 
-			mock.ExpectQuery(`SELECT \* FROM "test_runs" .*`).
+			mock.ExpectQuery(`SELECT test_runs.*, project_details.uuid, project_details.name AS test_project_name, project_details.team_name FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id ORDER BY id DESC`).
 				WillReturnRows(sqlmock.NewRows([]string{"id", "test_project_name"}).
 					AddRow(1, "Project A").
 					AddRow(2, "Project B").
