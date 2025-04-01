@@ -79,12 +79,16 @@ type ComplexityRoot struct {
 	}
 
 	TestRun struct {
-		EndTime         func(childComplexity int) int
-		ID              func(childComplexity int) int
-		StartTime       func(childComplexity int) int
-		SuiteRuns       func(childComplexity int) int
-		TestProjectName func(childComplexity int) int
-		TestSeed        func(childComplexity int) int
+		BuildTriggerActor func(childComplexity int) int
+		BuildURL          func(childComplexity int) int
+		EndTime           func(childComplexity int) int
+		GitBranch         func(childComplexity int) int
+		GitSha            func(childComplexity int) int
+		ID                func(childComplexity int) int
+		StartTime         func(childComplexity int) int
+		SuiteRuns         func(childComplexity int) int
+		TestProjectName   func(childComplexity int) int
+		TestSeed          func(childComplexity int) int
 	}
 
 	TestRunConnection struct {
@@ -113,7 +117,7 @@ func (e *executableSchema) Schema() *ast.Schema {
 	return parsedSchema
 }
 
-func (e *executableSchema) Complexity(typeName, field string, childComplexity int, rawArgs map[string]interface{}) (int, bool) {
+func (e *executableSchema) Complexity(typeName, field string, childComplexity int, rawArgs map[string]any) (int, bool) {
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
@@ -294,12 +298,40 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Tag.Name(childComplexity), true
 
+	case "TestRun.buildTriggerActor":
+		if e.complexity.TestRun.BuildTriggerActor == nil {
+			break
+		}
+
+		return e.complexity.TestRun.BuildTriggerActor(childComplexity), true
+
+	case "TestRun.buildUrl":
+		if e.complexity.TestRun.BuildURL == nil {
+			break
+		}
+
+		return e.complexity.TestRun.BuildURL(childComplexity), true
+
 	case "TestRun.endTime":
 		if e.complexity.TestRun.EndTime == nil {
 			break
 		}
 
 		return e.complexity.TestRun.EndTime(childComplexity), true
+
+	case "TestRun.gitBranch":
+		if e.complexity.TestRun.GitBranch == nil {
+			break
+		}
+
+		return e.complexity.TestRun.GitBranch(childComplexity), true
+
+	case "TestRun.gitSha":
+		if e.complexity.TestRun.GitSha == nil {
+			break
+		}
+
+		return e.complexity.TestRun.GitSha(childComplexity), true
 
 	case "TestRun.id":
 		if e.complexity.TestRun.ID == nil {
@@ -376,14 +408,14 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 }
 
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
-	rc := graphql.GetOperationContext(ctx)
-	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
+	opCtx := graphql.GetOperationContext(ctx)
+	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputTestRunFilter,
 	)
 	first := true
 
-	switch rc.Operation.Operation {
+	switch opCtx.Operation.Operation {
 	case ast.Query:
 		return func(ctx context.Context) *graphql.Response {
 			var response graphql.Response
@@ -391,7 +423,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			if first {
 				first = false
 				ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
-				data = ec._Query(ctx, rc.Operation.SelectionSet)
+				data = ec._Query(ctx, opCtx.Operation.SelectionSet)
 			} else {
 				if atomic.LoadInt32(&ec.pendingDeferred) > 0 {
 					result := <-ec.deferredResults
@@ -493,6 +525,10 @@ type TestRun {
   testSeed: Int
   startTime: String
   endTime: String
+  gitBranch: String
+  gitSha: String
+  buildTriggerActor: String
+  buildUrl: String
   suiteRuns: [SuiteRun!]!
 }
 

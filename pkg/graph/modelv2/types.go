@@ -38,12 +38,16 @@ type Tag struct {
 }
 
 type TestRun struct {
-	ID              int         `json:"id"`
-	TestProjectName *string     `json:"testProjectName,omitempty"`
-	TestSeed        *int        `json:"testSeed,omitempty"`
-	StartTime       *string     `json:"startTime,omitempty"`
-	EndTime         *string     `json:"endTime,omitempty"`
-	SuiteRuns       []*SuiteRun `json:"suite_runs" gorm:"foreignKey:TestRunID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	ID                int         `json:"id"`
+	TestProjectName   *string     `json:"testProjectName,omitempty"`
+	TestSeed          *int        `json:"testSeed,omitempty"`
+	StartTime         *string     `json:"startTime,omitempty"`
+	EndTime           *string     `json:"endTime,omitempty"`
+	GitBranch         *string     `json:"gitBranch,omitempty"`
+	GitSha            *string     `json:"gitSha,omitempty"`
+	BuildTriggerActor *string     `json:"buildTriggerActor,omitempty"`
+	BuildURL          *string     `json:"buildUrl,omitempty"`
+	SuiteRuns         []*SuiteRun `json:"suite_runs" gorm:"foreignKey:TestRunID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 type TestRunConnection struct {
