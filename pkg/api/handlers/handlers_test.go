@@ -39,17 +39,18 @@ var _ = BeforeEach(func() {
 		PreferSimpleProtocol: true,
 	})
 	gormDb, _ = gorm.Open(dialector, &gorm.Config{})
-
 })
 
 var _ = AfterEach(func() {
-	db.Close()
+	err := db.Close()
+	if err != nil {
+		fmt.Printf("Unable to close the db connection %s", err.Error())
+	}
 })
 
 var _ = Describe("Handlers", func() {
 	Context("when GetTestRunAll handler is invoked", func() {
 		It("should query db to fetch all records", func() {
-
 			rows := sqlmock.NewRows([]string{"ID", "TestProjectName"}).
 				AddRow(1, "project 1").
 				AddRow(2, "project 2")
@@ -77,7 +78,6 @@ var _ = Describe("Handlers", func() {
 
 	Context("When GetTestRunByID handler is invoked", func() {
 		It("should query DB with where clause filtering by id", func() {
-
 			rows := sqlmock.NewRows([]string{"ID", "TestProjectName"}).
 				AddRow(123, "project 123")
 
@@ -202,7 +202,6 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("with bad POST payload, it should return Bad Request 400 ", func() {
-
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 
@@ -292,11 +291,10 @@ var _ = Describe("Handlers", func() {
 
 			// Check the response status code
 			Expect(w.Code).To(Equal(http.StatusNotFound))
-
 		})
 
 		It("and error occurs during ProcessTags, it should handle error and return 500 Internal Server Error", func() {
-			var testRun = models.TestRun{
+			testRun := models.TestRun{
 				ID:                1,
 				TestProjectName:   "TestProject",
 				TestProjectID:     "996ad860-2a9a-504f-8861-aeafd0b2ae29",
@@ -335,7 +333,7 @@ var _ = Describe("Handlers", func() {
 				},
 			}
 
-			//mock.ExpectBegin()
+			// mock.ExpectBegin()
 			testRuns := sqlmock.NewRows([]string{"id", "TestProjectName"}).
 				AddRow(1, "project 1")
 
@@ -377,11 +375,10 @@ var _ = Describe("Handlers", func() {
 
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 			Expect(w.Body.String()).To(ContainSubstring("error processing tags"))
-
 		})
 
 		It("and error occurs during Save/Update of testRun record, it should handle error and return 500 Internal Server Error", func() {
-			var testRun = models.TestRun{
+			testRun := models.TestRun{
 				ID:                1,
 				TestProjectName:   "TestProject",
 				TestProjectID:     "996ad860-2a9a-504f-8861-aeafd0b2ae29",
@@ -430,7 +427,7 @@ var _ = Describe("Handlers", func() {
 				WithArgs("996ad860-2a9a-504f-8861-aeafd0b2ae29", 1).
 				WillReturnRows(projectRows)
 
-			//mock.ExpectBegin()
+			// mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT $2`)).
 				WithArgs(testRun.ID, 1).
 				WillReturnRows(testRuns)
@@ -473,13 +470,11 @@ var _ = Describe("Handlers", func() {
 
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 			Expect(w.Body.String()).To(ContainSubstring("error saving record"))
-
 		})
-
 	})
 
 	Context("When ProcessTags is invoked", func() {
-		var testRun = models.TestRun{
+		testRun := models.TestRun{
 			ID:                0,
 			TestProjectName:   "TestProject",
 			StartTime:         time.Time{},
@@ -524,14 +519,13 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should process tags successfully", func() {
-
 			err := handlers.ProcessTags(gormDb, &testRun)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
 	Context("When ProcessTags is invoked and tag creation fails", func() {
-		var testRun = models.TestRun{
+		testRun := models.TestRun{
 			ID:                0,
 			TestProjectName:   "TestProject",
 			StartTime:         time.Time{},
@@ -587,7 +581,7 @@ var _ = Describe("Handlers", func() {
 	})
 
 	Context("When ProcessTags is invoked and tag already exists in the database", func() {
-		var testRun = models.TestRun{
+		testRun := models.TestRun{
 			ID:                0,
 			TestProjectName:   "TestProject",
 			StartTime:         time.Time{},
@@ -694,7 +688,7 @@ var _ = Describe("Handlers", func() {
 	})
 
 	Context("When ProcessTags is invoked and tag creation fails due to unknown error", func() {
-		var testRun = models.TestRun{
+		testRun := models.TestRun{
 			ID:                0,
 			TestProjectName:   "TestProject",
 			StartTime:         time.Time{},
@@ -767,7 +761,6 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("and test run exists, it should return 200 OK", func() {
-
 			expectedTestRun := models.TestRun{
 				ID:                1,
 				TestProjectName:   "TestProject",
@@ -823,11 +816,9 @@ var _ = Describe("Handlers", func() {
 
 			// Check the response status code
 			Expect(w.Code).To(Equal(http.StatusOK))
-
 		})
 
 		It("with wrong POST payload, it should return status 200 OK", func() {
-
 			expectedTestRun := models.TestRun{
 				ID:              1,
 				TestProjectName: "TestProject",
@@ -869,11 +860,9 @@ var _ = Describe("Handlers", func() {
 			Expect(expectedTestRun.StartTime).To(BeTemporally("==", responseBody.StartTime))
 			Expect(expectedTestRun.EndTime).To(BeTemporally("==", responseBody.EndTime))
 			Expect(expectedTestRun.TestSeed).To(Equal(responseBody.TestSeed))
-
 		})
 
 		It("with invalid JSON payload, it should return error", func() {
-
 			expectedTestRun := models.TestRun{
 				ID:              1,
 				TestProjectName: "TestProject",
@@ -901,7 +890,7 @@ var _ = Describe("Handlers", func() {
 				},
 			}
 
-			//mock.ExpectBegin()
+			// mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "test_runs" WHERE id = $1 ORDER BY "test_runs"."id" LIMIT $2`)).
 				WithArgs("1", 1).
 				WillReturnRows(mock.NewRows([]string{"id", "test_project_name", "test_seed"}).
@@ -931,13 +920,11 @@ var _ = Describe("Handlers", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(w.Code).To(Equal(http.StatusOK))
-
 		})
 	})
 
 	Context("When DeleteTestRun handler is invoked", func() {
 		It("should delete record from DB by id", func() {
-
 			testRunRow := sqlmock.NewResult(1, 1)
 
 			mock.ExpectBegin()
@@ -965,7 +952,6 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should handle error", func() {
-
 			mock.ExpectBegin()
 			mock.ExpectExec("DELETE FROM \"test_runs\" WHERE \"test_runs\".\"id\" = \\$1").
 				WithArgs(123).
@@ -991,7 +977,6 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should handle scenario of no rows affected", func() {
-
 			mock.ExpectBegin()
 			mock.ExpectExec("DELETE FROM \"test_runs\" WHERE \"test_runs\".\"id\" = \\$1").
 				WithArgs(123).
@@ -1030,7 +1015,6 @@ var _ = Describe("Handlers", func() {
 			// Extract the error message
 			errorMessage, _ := response["error"].(string)
 			Expect(errorMessage).To((Equal("test run not found")))
-
 		})
 
 		It("should handle invalid id format", func() {
@@ -1049,7 +1033,6 @@ var _ = Describe("Handlers", func() {
 			handler.DeleteTestRun(c)
 
 			Expect(w.Code).To((Equal(http.StatusNotFound)))
-
 		})
 	})
 
@@ -1144,5 +1127,4 @@ var _ = Describe("Handlers", func() {
 			Expect(w.Body.String()).To(MatchJSON(expectedJSON))
 		})
 	})
-
 })

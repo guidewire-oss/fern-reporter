@@ -23,4 +23,3 @@ CREATE TABLE public.spec_runs (
     REFERENCES public.suite_runs(id)
     ON UPDATE CASCADE ON DELETE CASCADE
 );
-

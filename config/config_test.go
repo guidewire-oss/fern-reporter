@@ -1,11 +1,12 @@
 package config_test
 
 import (
+	"os"
+
 	"github.com/guidewire/fern-reporter/config"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
-	"os"
 )
 
 // Mock the file reading function
@@ -19,10 +20,8 @@ func (m *MockFileReader) ReadFile(filename string) ([]byte, error) {
 }
 
 var _ = Describe("When LoadConfig is invoked", func() {
-
 	Context("LoadConfig", func() {
 		It("should load the configuration from a file", func() {
-
 			appConfig, err := config.LoadConfig()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -41,7 +40,6 @@ var _ = Describe("When LoadConfig is invoked", func() {
 		})
 
 		It("should get non-nil DB", func() {
-
 			_, err := config.LoadConfig()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -49,17 +47,14 @@ var _ = Describe("When LoadConfig is invoked", func() {
 		})
 
 		It("should get non-nil Server", func() {
-
 			_, err := config.LoadConfig()
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(config.GetServer()).ToNot(BeNil())
 		})
-
 	})
-
+	//nolint:all
 	It("should override configuration with environment variables", func() {
-
 		os.Setenv("AUTH_JSON_WEB_KEYS_ENDPOINT", "https://test-idp-base-url.com/oauth2/abc123/v1/keys")
 		os.Setenv("AUTH_ENABLED", "false")
 		os.Setenv("SCOPE_CLAIM_NAME", "fern_scope")
@@ -70,7 +65,7 @@ var _ = Describe("When LoadConfig is invoked", func() {
 		os.Setenv("FERN_DATABASE", "fern")
 		os.Setenv("FERN_HEADER_NAME", "Custom Fern Report Header")
 
-		//v := viper.New()
+		// v := viper.New()
 		result, err := config.LoadConfig()
 
 		Expect(err).To(BeNil())
@@ -86,5 +81,4 @@ var _ = Describe("When LoadConfig is invoked", func() {
 		Expect(result.Header).To(Equal("Custom Fern Report Header"))
 		Expect(result.Header).To(Equal("Custom Fern Report Header"))
 	})
-
 })
