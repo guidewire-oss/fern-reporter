@@ -10,6 +10,5 @@ CREATE TABLE public.test_runs (
     test_project_name text,
     start_time timestamp with time zone,
     end_time timestamp with time zone,
-    PRIMARY KEY(id, test_seed)
+    PRIMARY KEY (id, test_seed)
 );
-
