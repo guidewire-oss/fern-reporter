@@ -3,6 +3,10 @@ package routers_test
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"reflect"
+	"runtime"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 	"github.com/guidewire/fern-reporter/config"
@@ -12,9 +16,6 @@ import (
 	. "github.com/onsi/gomega"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"os"
-	"reflect"
-	"runtime"
 )
 
 var _ = Describe("RegisterRouters", func() {
@@ -37,8 +38,11 @@ var _ = Describe("RegisterRouters", func() {
 		gormDb, _ = gorm.Open(dialector, &gorm.Config{})
 	})
 
-	var _ = AfterEach(func() {
-		db.Close()
+	_ = AfterEach(func() {
+		err := db.Close()
+		if err != nil {
+			fmt.Printf("Unable to close the db connection %s", err.Error())
+		}
 	})
 
 	Context("Registering routes", func() {

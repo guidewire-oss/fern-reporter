@@ -1,10 +1,11 @@
 package utils
 
 import (
-	"github.com/guidewire/fern-reporter/pkg/models"
-	"time"
 	"encoding/base64"
 	"fmt"
+	"time"
+
+	"github.com/guidewire/fern-reporter/pkg/models"
 )
 
 const (
@@ -31,9 +32,10 @@ func CalculateTestMetrics(testRuns []models.TestRun) (totalTests, executedTests,
 				totalTests++ // Count each spec run
 				if specRun.Status != StatusSkipped {
 					executedTests++ // Count only executed spec runs
-					if specRun.Status == StatusPassed {
+					switch specRun.Status {
+					case StatusPassed:
 						passedTests++ // Count passed spec runs
-					} else if specRun.Status == StatusFailed {
+					case StatusFailed:
 						failedTests++ // Count failed spec runs
 					}
 				}
@@ -46,6 +48,7 @@ func CalculateTestMetrics(testRuns []models.TestRun) (totalTests, executedTests,
 func EncodeCursor(offset int) string {
 	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("cursor%d", offset)))
 }
+
 func DecodeCursor(cursor *string) int {
 	if cursor == nil {
 		return 0

@@ -1,6 +1,14 @@
 package handlers_test
 
 import (
+	"fmt"
+	"html/template"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gin-gonic/gin"
@@ -11,12 +19,6 @@ import (
 	. "github.com/onsi/gomega"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"html/template"
-	"net/http"
-	"net/http/httptest"
-	"regexp"
-	"strings"
-	"time"
 )
 
 var _ = BeforeEach(func() {
@@ -29,15 +31,16 @@ var _ = BeforeEach(func() {
 		PreferSimpleProtocol: true,
 	})
 	gormDb, _ = gorm.Open(dialector, &gorm.Config{})
-
 })
 
 var _ = AfterEach(func() {
-	db.Close()
+	err := db.Close()
+	if err != nil {
+		fmt.Printf("Unable to close the db connection %s", err.Error())
+	}
 })
 
 var _ = Describe("Insights test", func() {
-
 	Context("When ReportTestInsights is invoked", func() {
 		gin.SetMode(gin.TestMode)
 		router := gin.Default()
@@ -58,7 +61,6 @@ var _ = Describe("Insights test", func() {
 				endTime := time.Date(2024, 4, 22, 0, 0, 0, 0, time.UTC)
 
 				It("should return a summary of the test insights", func() {
-
 					rows := sqlmock.NewRows([]string{"id", "test_project_name", "start_time", "end_time", "pass_rate", "duration"}).
 						AddRow(1, "TestProject", time.Date(2024, 4, 20, 12, 0, 0, 0, time.UTC),
 							time.Date(2024, 4, 20, 12, 1, 0, 0, time.UTC), 100.000, 60).
@@ -114,7 +116,6 @@ var _ = Describe("Insights test", func() {
 				endTime := time.Date(2024, 3, 5, 0, 0, 0, 0, time.UTC)
 
 				It("should not include insights for any tests and return default empty data", func() {
-
 					rows := sqlmock.NewRows([]string{"id", "test_project_name", "start_time", "end_time", "pass_rate", "duration"})
 
 					mock.ExpectQuery(regexp.QuoteMeta(`SELECT suite_runs.id, test_runs.test_project_name, test_runs.start_time, test_runs.end_time,ROUND(AVG(CASE WHEN spec_runs.status = 'passed' THEN 100.0 ELSE 0.0 END), 3) AS pass_rate, (test_runs.end_time - test_runs.start_time) AS duration FROM "test_runs" INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id INNER JOIN spec_runs ON suite_runs.id = spec_runs.suite_id WHERE test_runs.start_time >= $1 AND test_runs.start_time <= $2 AND test_project_name = $3 GROUP BY suite_runs.id, test_runs.test_project_name, test_runs.start_time, test_runs.end_time ORDER BY duration DESC`)).
