@@ -67,3 +67,11 @@ func GetProjectSpecStatistics(h *Handler, projectId string) []models.TestSummary
 		Scan(&testSummaries)
 	return testSummaries
 }
+
+func GetUserObject(h *Handler, cookie string) (models.AppUser, error) {
+	var user models.AppUser
+	if err := h.db.Where("cookie = ?", cookie).First(&user).Error; err != nil {
+		return user, err
+	}
+	return user, nil
+}

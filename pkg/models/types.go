@@ -79,3 +79,27 @@ type ProjectDetails struct {
 	CreatedAt time.Time `json:"created_at" gorm:"default:CURRENT_TIMESTAMP"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+type PreferredProject struct {
+	ID        uint64  `gorm:"primaryKey;autoIncrement"`
+	UserID    uint64  `gorm:"uniqueIndex:idx_user_project"`
+	ProjectID uint64  `gorm:"uniqueIndex:idx_user_project"`
+	GroupID   *uint64 // Nullable field (for ungrouped)
+
+	User    AppUser        `gorm:"foreignKey:ID;constraint:OnDelete:CASCADE"`
+	Project ProjectDetails `gorm:"foreignKey:ProjectID;references:ID;constraint:OnDelete:CASCADE"`
+	Group   *ProjectGroup  `gorm:"foreignKey:GroupID;references:GroupID;constraint:OnDelete:SET NULL"`
+}
+
+type ProjectGroup struct {
+	GroupID   uint64 `gorm:"primaryKey;autoIncrement;column:group_id"`
+	UserID    uint64
+	GroupName string
+}
+
+type AppUser struct {
+	ID       uint64 `gorm:"primaryKey"`
+	IsDark   *bool  `gorm:"column:is_dark"`
+	Timezone string `gorm:"size:100"`
+	Cookie   string `gorm:"size:100;uniqueIndex"` // Assuming cookie should be unique per user
+}
