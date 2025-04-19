@@ -12,6 +12,7 @@ require (
 	github.com/lestrrat-go/iter v1.0.2
 	github.com/lestrrat-go/jwx/v2 v2.1.4
 	github.com/markbates/pkger v0.17.1
+	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
 	github.com/spf13/viper v1.20.1

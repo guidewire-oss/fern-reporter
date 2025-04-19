@@ -1054,31 +1054,6 @@ var _ = Describe("Handlers", func() {
 		})
 	})
 
-	Context("When the report project handler is invoked", func() {
-		It("should return all project names in ascending order", func() {
-			projectRows := sqlmock.NewRows([]string{"id", "name", "uuid"}).
-				AddRow(1, "ProjectA", "uuid-1").
-				AddRow(2, "ProjectF", "uuid-2").
-				AddRow(3, "ProjectZ", "uuid-3")
-
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" ORDER BY name ASC`)).
-				WillReturnRows(projectRows)
-
-			gin.SetMode(gin.TestMode)
-			router := gin.Default()
-			handler := handlers.NewHandler(gormDb)
-			router.GET("/api/reports/projects", handler.GetProjectAll)
-
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/reports/projects", nil)
-			router.ServeHTTP(w, req)
-
-			Expect(w.Code).To(Equal(http.StatusOK))
-			expectedJSON := `{"projects":[{"id":1,"name":"ProjectA","uuid":"uuid-1"},{"id":2,"name":"ProjectF","uuid":"uuid-2"},{"id":3,"name":"ProjectZ","uuid":"uuid-3"}]}`
-			Expect(w.Body.String()).To(MatchJSON(expectedJSON))
-		})
-	})
-
 	Context("When a request is made to get a test summary by project name", func() {
 		It("should return the summary of test runs for the project", func() {
 			projectID := "1"

@@ -3,6 +3,7 @@ package routers_test
 import (
 	"database/sql"
 	"fmt"
+	"github.com/guidewire/fern-reporter/pkg/api/handlers/project"
 	"os"
 	"reflect"
 	"runtime"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers"
+	"github.com/guidewire/fern-reporter/pkg/api/handlers/user"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -48,6 +50,8 @@ var _ = Describe("RegisterRouters", func() {
 	Context("Registering routes", func() {
 		It("should register API routes", func() {
 			handler := handlers.NewHandler(gormDb)
+			userHandler := user.NewUserHandler(gormDb)
+			projectHandler := project.NewProjectHandler(gormDb)
 
 			routers.RegisterRouters(router)
 
@@ -59,6 +63,19 @@ var _ = Describe("RegisterRouters", func() {
 			ExpectRoute(router, "POST", "/api/testrun/", handler.CreateTestRun)
 			ExpectRoute(router, "PUT", "/api/testrun/:id", handler.UpdateTestRun)
 			ExpectRoute(router, "DELETE", "/api/testrun/:id", handler.DeleteTestRun)
+
+			ExpectRoute(router, "GET", "/api/project", projectHandler.GetAllProjects)
+			ExpectRoute(router, "POST", "/api/project", projectHandler.CreateProject)
+			ExpectRoute(router, "PUT", "/api/project/:uuid", projectHandler.UpdateProject)
+			ExpectRoute(router, "DELETE", "/api/project/:uuid", projectHandler.DeleteProject)
+
+			ExpectRoute(router, "POST", "/api/user/favourite", userHandler.SaveFavouriteProject)
+			ExpectRoute(router, "DELETE", "/api/user/favourite/:projectUUID", userHandler.DeleteFavouriteProject)
+			ExpectRoute(router, "PUT", "/api/user/preference", userHandler.SaveUserPreference)
+			ExpectRoute(router, "GET", "/api/user/preference", userHandler.GetUserPreference)
+			ExpectRoute(router, "POST", "/api/user/preferred", userHandler.SavePreferredProject)
+			ExpectRoute(router, "GET", "/api/user/preferred", userHandler.GetPreferredProject)
+			ExpectRoute(router, "DELETE", "/api/user/preferred", userHandler.DeletePreferredProject)
 		})
 
 		It("should register report routes", func() {

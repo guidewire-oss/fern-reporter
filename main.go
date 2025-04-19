@@ -3,9 +3,11 @@ package main
 import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/google/uuid"
 	"github.com/guidewire/fern-reporter/pkg/graph/generated"
 	"github.com/guidewire/fern-reporter/pkg/graph/resolvers"
 	"github.com/guidewire/fern-reporter/pkg/utils"
+	"github.com/mileusna/useragent"
 	"gorm.io/gorm"
 
 	"context"
@@ -49,6 +51,9 @@ func initServer() {
 	serverConfig := config.GetServer()
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
+
+	// Add cookie middleware BEFORE routes
+	router.Use(SetMiddlewareCookie())
 
 	if config.GetAuth().Enabled {
 		checkAuthConfig()
@@ -126,4 +131,28 @@ func configJWTMiddleware(router *gin.Engine) {
 
 	router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, keyFetcher, jwtValidator))
 	log.Println("JWT Middleware configured successfully.")
+}
+
+func SetMiddlewareCookie() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, err := c.Cookie(utils.CookieName)
+		if err != nil {
+			// Cookie not found, generate and set
+			newUUID := uuid.New().String()
+			ua := useragent.Parse(c.GetHeader("User-Agent"))
+			// Check if it's a browser (not a bot, and has browser name)
+			if ua.Name != "" && !ua.Bot {
+				c.SetCookie(
+					utils.CookieName,
+					newUUID,
+					int(100*365*24*time.Hour.Seconds()), // 100 years
+					"/",
+					"",
+					false, // secure (set to true if using HTTPS)
+					true,  // httpOnly
+				)
+			}
+		}
+		c.Next()
+	}
 }

@@ -140,7 +140,7 @@ func (h *Handler) UpdateTestRun(c *gin.Context) {
 	}
 	err := c.BindJSON(&testRun)
 	if err != nil {
-		log.Fatalf("error binding json: %v", err)
+		log.Printf("error binding json: %v", err)
 	}
 
 	db.Save(&testRun)
@@ -258,109 +258,6 @@ func (h *Handler) ReportTestInsights(c *gin.Context) {
 		"longestTestRuns": longestTestRuns,
 		"numTests":        numTests,
 	})
-}
-
-func (h *Handler) GetProjectAll(c *gin.Context) {
-	var projects []struct {
-		ID   uint64 `json:"id"`
-		Name string `json:"name"`
-		UUID string `json:"uuid"`
-	}
-	h.db.Table("project_details").
-		Order("name ASC").
-		Find(&projects)
-
-	c.JSON(http.StatusOK, gin.H{
-		"projects": projects,
-	})
-}
-
-func (h *Handler) CreateProject(c *gin.Context) {
-	var project models.ProjectDetails
-	var existingProject models.ProjectDetails
-
-	if err := c.ShouldBindJSON(&project); err != nil {
-		fmt.Print(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return // Stop further processing if there is a binding error
-
-	}
-	gdb := h.db
-	// Check if a project with the same name already exists
-	if err := gdb.Where("name = ?", project.Name).First(&existingProject).Error; err == nil {
-		// If no error, it means the project exists
-		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Project name '%s' already exists", project.Name)})
-		return
-	} else if err := gdb.Save(&project).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "error saving record"})
-		return // Stop further processing if save fails
-	}
-
-	gdb.First(&project, project.ID)
-	c.JSON(http.StatusCreated, &project)
-}
-
-func (h *Handler) GetAllProjects(c *gin.Context) {
-	var projects []models.ProjectDetails
-
-	gdb := h.db
-	if err := gdb.Find(&projects).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching projects"})
-		return
-	}
-
-	c.JSON(http.StatusOK, projects)
-}
-
-func (h *Handler) UpdateProject(c *gin.Context) {
-	uuid := c.Param("uuid") // Get UUID from URL parameter
-	var project models.ProjectDetails
-
-	gdb := h.db
-
-	// Check if project with given UUID exists
-	if err := gdb.Where("uuid = ?", uuid).First(&project).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Project with UUID '%s' not found", uuid)})
-		return
-	}
-
-	// Bind request JSON to project struct
-	if err := c.ShouldBindJSON(&project); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Manually update the updated_at timestamp
-	project.UpdatedAt = time.Now()
-
-	// Save updated project details
-	if err := gdb.Save(&project).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating project"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Project updated successfully", "project": project})
-}
-
-func (h *Handler) DeleteProject(c *gin.Context) {
-	uuid := c.Param("uuid") // Get UUID from URL parameter
-	var project models.ProjectDetails
-
-	gdb := h.db
-
-	// Check if project exists
-	if err := gdb.Where("uuid = ?", uuid).First(&project).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Project with UUID '%s' not found", uuid)})
-		return
-	}
-
-	// Delete project from DB
-	if err := gdb.Delete(&project).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting project"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Project with UUID '%s' deleted successfully", uuid)})
 }
 
 func (h *Handler) GetTestSummary(c *gin.Context) {

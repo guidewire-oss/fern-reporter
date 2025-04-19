@@ -3,6 +3,8 @@ package utils
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"net/http"
 	"time"
 
 	"github.com/guidewire/fern-reporter/pkg/models"
@@ -14,6 +16,31 @@ const (
 	StatusPassed     = "passed"
 	StatusFailed     = "failed"
 )
+
+type ApiResponse[T any] struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Data    *T     `json:"data,omitempty"`  // Pointer so it's omitted if nil
+	Error   string `json:"error,omitempty"` // Only used on failure
+}
+
+func Success[T any](c *gin.Context, message string, data *T) *gin.Context {
+	c.JSON(http.StatusOK, ApiResponse[T]{
+		Success: true,
+		Message: message,
+		Data:    data,
+	})
+	return c
+}
+
+func Error[T any](c *gin.Context, statusCode int, message string, err string) *gin.Context {
+	c.JSON(statusCode, ApiResponse[T]{
+		Success: false,
+		Message: message,
+		Error:   err,
+	})
+	return c
+}
 
 func CalculateDuration(start, end time.Time) string {
 	duration := end.Sub(start)
