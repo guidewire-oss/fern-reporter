@@ -9,8 +9,9 @@ require (
 	github.com/gin-contrib/cors v1.7.5
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-migrate/migrate/v4 v4.18.3
+	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/iter v1.0.2
-	github.com/lestrrat-go/jwx/v2 v2.1.5
+	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/markbates/pkger v0.17.1
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.23.4
@@ -47,7 +48,6 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
