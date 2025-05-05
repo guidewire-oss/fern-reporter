@@ -3,6 +3,8 @@ package routers
 import (
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers"
+	"github.com/guidewire/fern-reporter/pkg/api/handlers/project"
+	"github.com/guidewire/fern-reporter/pkg/api/handlers/user"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
 
@@ -15,6 +17,8 @@ var (
 
 func RegisterRouters(router *gin.Engine) {
 	handler := handlers.NewHandler(db.GetDb())
+	userHandler := user.NewUserHandler(db.GetDb())
+	projectHandler := project.NewProjectHandler(db.GetDb())
 
 	authEnabled := config.GetAuth().Enabled
 
@@ -35,17 +39,27 @@ func RegisterRouters(router *gin.Engine) {
 		testRun.DELETE("/:id", handler.DeleteTestRun)
 
 		testReport := api.Group("/reports")
-		testReport.GET("/projects/", handler.GetProjectAll)
+		testReport.GET("/projects/", projectHandler.GetAllProjectsForReport)
 		testReport.GET("/summary/:projectId/", handler.GetTestSummary)
 		testReport.GET("/testruns/", handler.ReportTestRunAll)
 		testReport.GET("/testruns/:id/", handler.ReportTestRunById)
 
-		// Project specific API methods
+		// Project
 		project := api.Group("/project")
-		project.GET("/", handler.GetAllProjects)
-		project.POST("/", handler.CreateProject)
-		project.PUT("/:uuid", handler.UpdateProject)
-		project.DELETE("/:uuid", handler.DeleteProject)
+		project.GET("", projectHandler.GetAllProjects)
+		project.POST("", projectHandler.CreateProject)
+		project.PUT("/:uuid", projectHandler.UpdateProject)
+		project.DELETE("/:uuid", projectHandler.DeleteProject)
+
+		// User Preference
+		user := api.Group("/user")
+		user.POST("/favourite", userHandler.SaveFavouriteProject)
+		user.DELETE("/favourite/:projectUUID", userHandler.DeleteFavouriteProject)
+		user.PUT("/preference", userHandler.SaveUserPreference)
+		user.GET("/preference", userHandler.GetUserPreference)
+		user.POST("/preferred", userHandler.SavePreferredProject)
+		user.GET("/preferred", userHandler.GetPreferredProject)
+		user.DELETE("/preferred", userHandler.DeletePreferredProject)
 	}
 
 	var reports *gin.RouterGroup
