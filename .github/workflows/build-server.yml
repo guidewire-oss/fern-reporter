@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 jobs:
   build-and-push:
@@ -30,5 +30,4 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: anoop2811/fern-reporter:latest
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-
+          platforms: linux/amd64,linux/arm64
