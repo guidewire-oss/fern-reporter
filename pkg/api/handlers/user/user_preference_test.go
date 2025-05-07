@@ -281,6 +281,111 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		})
 	})
 
+	Context("when get favourite project is invoked", func() {
+		It("will return favourite project list and return 200 OK", func() {
+			projectUUIDs := []string{"96ad8601-2a9a-504f-8861-aeafd0b2ae29", "59e06cf8-f390-5093-af2e-3685be593a25"}
+
+			user_rows := sqlmock.NewRows([]string{"id", "cookie"}).
+				AddRow(1, ucookie)
+
+			project_rows := sqlmock.NewRows([]string{"uuid"}).
+				AddRow(projectUUIDs[0]).
+				AddRow(projectUUIDs[1])
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "app_users" WHERE cookie = $1 ORDER BY "app_users"."id" LIMIT $2`)).
+				WithArgs(ucookie, 1).
+				WillReturnRows(user_rows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "project_details"."uuid" FROM "preferred_projects" 
+			JOIN project_details ON preferred_projects.project_id = project_details.id 
+			WHERE preferred_projects.user_id = $1 AND preferred_projects.group_id IS NULL`)).
+				WithArgs(1).
+				WillReturnRows(project_rows)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/user/favourite", nil)
+			req.AddCookie(&http.Cookie{
+				Name:  utils.CookieName,
+				Value: ucookie,
+			})
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+
+			handler := user.NewUserHandler(gormDb)
+			handler.GetFavouriteProject(c)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+
+			var response []string
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(response).To(Equal(projectUUIDs))
+		})
+
+		It("will return 404 if user is not found", func() {
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "app_users" WHERE cookie = $1 ORDER BY "app_users"."id" LIMIT $2`)).
+				WithArgs(ucookie, 1).
+				WillReturnError(errors.New("Record not found"))
+
+			req := httptest.NewRequest(http.MethodGet, "/api/user/favourite", nil)
+			req.AddCookie(&http.Cookie{
+				Name:  utils.CookieName,
+				Value: ucookie,
+			})
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+
+			handler := user.NewUserHandler(gormDb)
+			handler.GetFavouriteProject(c)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+
+			var response map[string]interface{}
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response["error"]).To(ContainSubstring("User ID not found"))
+		})
+
+		It("will return 500 if there is an error fetching favourite projects", func() {
+			user_rows := sqlmock.NewRows([]string{"id", "cookie"}).
+				AddRow(1, ucookie)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "app_users" WHERE cookie = $1 ORDER BY "app_users"."id" LIMIT $2`)).
+				WithArgs(ucookie, 1).
+				WillReturnRows(user_rows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "project_details"."uuid" FROM "preferred_projects" 
+			JOIN project_details ON preferred_projects.project_id = project_details.id 
+			WHERE preferred_projects.user_id = $1 AND preferred_projects.group_id IS NULL`)).
+				WithArgs(1).
+				WillReturnError(errors.New("Database error"))
+
+			req := httptest.NewRequest(http.MethodGet, "/api/user/favourite", nil)
+			req.AddCookie(&http.Cookie{
+				Name:  utils.CookieName,
+				Value: ucookie,
+			})
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+
+			handler := user.NewUserHandler(gormDb)
+			handler.GetFavouriteProject(c)
+
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+
+			var response map[string]interface{}
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response["error"]).To(Equal("error fetching favourite project uuids"))
+		})
+	})
+
 	Context("when save user preference is invoked", func() {
 		var userPrefRequest = user.UserPreferenceRequest{
 			IsDark:   true,
