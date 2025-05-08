@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/google/uuid"
@@ -11,13 +13,14 @@ import (
 	"gorm.io/gorm"
 
 	"context"
+	"html/template"
+	"log"
+
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/routers"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
-	"html/template"
-	"log"
 
 	"time"
 
@@ -63,10 +66,10 @@ func initServer() {
 	}
 
 	router.Use(cors.New(cors.Config{
-		AllowMethods:     []string{"GET", "POST"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "ACCESS_TOKEN"},
-		AllowCredentials: false,
-		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "DELETE", "PUT"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "ACCESS_TOKEN", "User-Agent"},
+		AllowCredentials: true,
+		AllowOriginFunc:  isAllowedOrigin,
 		MaxAge:           12 * time.Hour,
 	}))
 
@@ -131,6 +134,15 @@ func configJWTMiddleware(router *gin.Engine) {
 
 	router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, keyFetcher, jwtValidator))
 	log.Println("JWT Middleware configured successfully.")
+}
+
+func isAllowedOrigin(origin string) bool {
+	origin = strings.ToLower(origin)
+
+	if strings.Contains(origin, "localhost") || strings.HasPrefix(origin, "https://fern") {
+		return true
+	}
+	return false
 }
 
 func SetMiddlewareCookie() gin.HandlerFunc {
