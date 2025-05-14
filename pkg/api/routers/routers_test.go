@@ -71,6 +71,7 @@ var _ = Describe("RegisterRouters", func() {
 
 			ExpectRoute(router, "POST", "/api/user/favourite", userHandler.SaveFavouriteProject)
 			ExpectRoute(router, "DELETE", "/api/user/favourite/:projectUUID", userHandler.DeleteFavouriteProject)
+			ExpectRoute(router, "GET", "/api/user/favourite", userHandler.GetFavouriteProject)
 			ExpectRoute(router, "PUT", "/api/user/preference", userHandler.SaveUserPreference)
 			ExpectRoute(router, "GET", "/api/user/preference", userHandler.GetUserPreference)
 			ExpectRoute(router, "POST", "/api/user/preferred", userHandler.SavePreferredProject)

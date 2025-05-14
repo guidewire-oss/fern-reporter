@@ -55,6 +55,7 @@ func RegisterRouters(router *gin.Engine) {
 		user := api.Group("/user")
 		user.POST("/favourite", userHandler.SaveFavouriteProject)
 		user.DELETE("/favourite/:projectUUID", userHandler.DeleteFavouriteProject)
+		user.GET("/favourite", userHandler.GetFavouriteProject)
 		user.PUT("/preference", userHandler.SaveUserPreference)
 		user.GET("/preference", userHandler.GetUserPreference)
 		user.POST("/preferred", userHandler.SavePreferredProject)
