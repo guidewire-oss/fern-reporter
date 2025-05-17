@@ -74,6 +74,128 @@ var _ = Describe("Handlers", func() {
 			Expect(testRuns[0].TestProjectName).To(Equal("project 1"))
 			Expect(testRuns[1].TestProjectName).To(Equal("project 2"))
 		})
+
+		It("should return 400 for invalid sort_by parameter", func() {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			c.Request, _ = http.NewRequest("GET", "/testruns?sort_by=invalid_field", nil)
+			handler := handlers.NewHandler(gormDb)
+			handler.GetTestRunAll(c)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+			Expect(w.Body.String()).To(ContainSubstring("invalid sort_by field"))
+		})
+
+		It("should return 400 for invalid order parameter", func() {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			c.Request, _ = http.NewRequest("GET", "/testruns?order=invalid_order", nil)
+			handler := handlers.NewHandler(gormDb)
+			handler.GetTestRunAll(c)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+			Expect(w.Body.String()).To(ContainSubstring("order must be 'asc' or 'desc'"))
+		})
+
+		It("should apply project_uuid filter", func() {
+			rows := sqlmock.NewRows([]string{
+				"id", "test_project_name", "project_id", "test_seed", "start_time", "end_time", "git_branch", "git_sha", "build_trigger_actor", "build_url", "status",
+			}).AddRow(1, "project 1", 101, 0, time.Now(), time.Now(), "main", "abc123", "ci", "url", "PASSED")
+
+			mock.ExpectQuery(`(?i)SELECT .* FROM "test_runs" JOIN project_details ON project_details\.id = test_runs\.project_id WHERE project_details\.uuid = \$1 ORDER BY test_runs\.end_time desc`).
+				WithArgs("abc-123").
+				WillReturnRows(rows)
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			c.Request, _ = http.NewRequest("GET", "/testruns?project_uuid=abc-123", nil)
+			handler := handlers.NewHandler(gormDb)
+			handler.GetTestRunAll(c)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+		})
+
+		It("should apply valid sort_by and order parameters", func() {
+			rows := sqlmock.NewRows([]string{
+				"id", "test_project_name", "project_id", "test_seed", "start_time", "end_time", "git_branch", "git_sha", "build_trigger_actor", "build_url", "status",
+			}).AddRow(1, "project 1", 101, 0, time.Now(), time.Now(), "main", "abc123", "ci", "url", "PASSED")
+
+			mock.ExpectQuery(`(?i)SELECT .* FROM "test_runs" ORDER BY test_runs\.start_time asc`).
+				WillReturnRows(rows)
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			c.Request, _ = http.NewRequest("GET", "/testruns?sort_by=start_time&order=asc", nil)
+			handler := handlers.NewHandler(gormDb)
+			handler.GetTestRunAll(c)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+		})
+
+		It("should preload fields when specified", func() {
+			testRunRows := sqlmock.NewRows([]string{
+				"id", "test_project_name", "project_id", "test_seed", "start_time", "end_time", "git_branch", "git_sha", "build_trigger_actor", "build_url", "status",
+			}).AddRow(1, "project 1", 101, 123, time.Now(), time.Now(), "main", "abc123", "dev", "url", "PASSED")
+
+			mock.ExpectQuery(regexp.QuoteMeta(`
+					SELECT * FROM "test_runs"
+					ORDER BY test_runs.end_time desc`)).
+				WillReturnRows(testRunRows)
+
+			projectRows := sqlmock.NewRows([]string{"id", "uuid", "name", "team_name", "comment", "created_at", "updated_at"}).
+				AddRow(101, "uuid-123", "project-name", "team-a", "", time.Now(), time.Now())
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE "project_details"."id" = $1`)).
+				WithArgs(101).
+				WillReturnRows(projectRows)
+
+			suiteRunRows := sqlmock.NewRows([]string{"id", "test_run_id", "suite_name", "start_time", "end_time"}).
+				AddRow(201, 1, "suite-1", time.Now(), time.Now())
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(suiteRunRows)
+
+			specRunRows := sqlmock.NewRows([]string{"id", "suite_id", "spec_description", "status", "message", "start_time", "end_time"}).
+				AddRow(301, 201, "spec-1", "PASSED", "", time.Now(), time.Now())
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
+				WithArgs(201).
+				WillReturnRows(specRunRows)
+
+			//tagJoinRows := sqlmock.NewRows([]string{"spec_run_id", "tag_id"}).
+			//	AddRow(301, 401)
+			//
+			//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_run_tags" WHERE "spec_run_tags"."spec_run_id" = $1`)).
+			//	WithArgs(301).
+			//	WillReturnRows(tagJoinRows)
+			//
+			//tagRows := sqlmock.NewRows([]string{"id", "name"}).
+			//	AddRow(401, "tag-1")
+
+			//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "tags" WHERE "tags"."id" = $1`)).
+			//	WithArgs(401).
+			//	WillReturnRows(tagRows)
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request, _ = http.NewRequest("GET", "/testruns?fields=project,suiteruns", nil)
+
+			handler := handlers.NewHandler(gormDb)
+			handler.GetTestRunAll(c)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var testRuns []models.TestRun
+			Expect(json.NewDecoder(w.Body).Decode(&testRuns)).To(Succeed())
+			Expect(len(testRuns)).To(Equal(1))
+			Expect(testRuns[0].Project.Name).To(Equal("project-name"))
+			Expect(testRuns[0].SuiteRuns[0].SuiteName).To(Equal("suite-1"))
+			//Expect(testRuns[0].SuiteRuns[0].SpecRuns[0].SpecDescription).To(Equal("spec-1"))
+		})
 	})
 
 	Context("When GetTestRunByID handler is invoked", func() {
@@ -125,6 +247,7 @@ var _ = Describe("Handlers", func() {
 				BuildTriggerActor: "Actor Name",
 				BuildUrl:          "https://someurl.com",
 				TestSeed:          0,
+				Status:            "PASSED",
 				SuiteRuns: []models.SuiteRun{
 					{
 						ID:        1,
@@ -161,8 +284,8 @@ var _ = Describe("Handlers", func() {
 				WillReturnRows(rows)
 
 			mock.ExpectBegin()
-			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","project_id","test_seed","start_time","end_time","git_branch","git_sha","build_trigger_actor","build_url") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "id"`)).
-				WithArgs(expectedTestRun.TestProjectName, expectedProject.ID, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl).
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","project_id","test_seed","start_time","end_time","git_branch","git_sha","build_trigger_actor","build_url","status") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "id"`)).
+				WithArgs(expectedTestRun.TestProjectName, expectedProject.ID, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl, expectedTestRun.Status).
 				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 			mock.ExpectCommit()
 
@@ -1061,11 +1184,12 @@ var _ = Describe("Handlers", func() {
 				AddRow(1, "TestSuite1", "TestProject", time.Date(2024, 4, 20, 12, 0, 0, 0, time.UTC), 5, 1, 10).
 				AddRow(2, "TestSuite2", "TestProject", time.Date(2024, 4, 21, 12, 0, 0, 0, time.UTC), 7, 2, 12)
 
+			//TODO: Update the expected query
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT suite_runs.id AS suite_run_id, 
 			suite_runs.suite_name,
             test_runs.start_time, 
-            COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'passed') AS total_passed_spec_runs, 
-			COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'skipped') AS total_skipped_spec_runs, 
+            COUNT(spec_runs.id) FILTER (WHERE LOWER(spec_runs.status) = 'passed') AS total_passed_spec_runs, 
+			COUNT(spec_runs.id) FILTER (WHERE LOWER(spec_runs.status) = 'skipped') AS total_skipped_spec_runs, 
             COUNT(spec_runs.id) AS total_spec_runs FROM "test_runs" 
                 INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id 
                 INNER JOIN spec_runs ON suite_runs.id = spec_runs.suite_id 

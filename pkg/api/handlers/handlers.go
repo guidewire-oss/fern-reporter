@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/models"
@@ -67,6 +68,8 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 		return // Stop further processing if tag processing fails
 	}
 
+	computeTestRunStatus(&testRun)
+
 	// Save or update the testRun record in the database
 	if err := gdb.Save(&testRun).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error saving record"})
@@ -81,6 +84,24 @@ func getProjectIDByUUID(db *gorm.DB, uuid string) (uint64, error) {
 		return 0, err
 	}
 	return project.ID, nil
+}
+
+func computeTestRunStatus(testRun *models.TestRun) {
+	status := "PASSED"
+
+	for _, suite := range testRun.SuiteRuns {
+		for _, spec := range suite.SpecRuns {
+			if strings.EqualFold(spec.Status, "FAILED") {
+				testRun.Status = "FAILED"
+				return
+			}
+			if strings.EqualFold(spec.Status, "SKIPPED") {
+				status = "SKIPPED"
+			}
+		}
+	}
+
+	testRun.Status = status
 }
 
 func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {
@@ -115,9 +136,60 @@ func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {
 	return nil
 }
 
+//func (h *Handler) GetTestRunAll(c *gin.Context) {
+//	var testRuns []models.TestRun
+//	h.db.Find(&testRuns)
+//	c.JSON(http.StatusOK, testRuns)
+//}
+
 func (h *Handler) GetTestRunAll(c *gin.Context) {
+
 	var testRuns []models.TestRun
-	h.db.Find(&testRuns)
+
+	projectUUID := c.Query("project_uuid")
+	sortBy := c.DefaultQuery("sort_by", "end_time")
+	order := c.DefaultQuery("order", "desc")
+	fields := strings.Split(c.DefaultQuery("fields", ""), ",")
+
+	allowedSortFields := map[string]bool{
+		"end_time":   true,
+		"start_time": true,
+		"status":     true,
+	}
+	if !allowedSortFields[sortBy] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sort_by field"})
+		return
+	}
+
+	if order != "asc" && order != "desc" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "order must be 'asc' or 'desc'"})
+		return
+	}
+
+	query := h.db.Model(&models.TestRun{})
+
+	for _, field := range fields {
+		switch strings.ToLower(strings.TrimSpace(field)) {
+		case "project":
+			query = query.Preload("Project")
+		case "suiteruns":
+			query = query.Preload("SuiteRuns.SpecRuns")
+		}
+	}
+
+	if projectUUID != "" {
+		log.Println()
+		query = query.Joins("JOIN project_details ON project_details.id = test_runs.project_id").
+			Where("project_details.uuid = ?", projectUUID)
+	}
+
+	query = query.Order(fmt.Sprintf("test_runs.%s %s", sortBy, order))
+
+	if err := query.Find(&testRuns).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, testRuns)
 }
 
