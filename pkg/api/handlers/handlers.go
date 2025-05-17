@@ -136,12 +136,6 @@ func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {
 	return nil
 }
 
-//func (h *Handler) GetTestRunAll(c *gin.Context) {
-//	var testRuns []models.TestRun
-//	h.db.Find(&testRuns)
-//	c.JSON(http.StatusOK, testRuns)
-//}
-
 func (h *Handler) GetTestRunAll(c *gin.Context) {
 
 	var testRuns []models.TestRun

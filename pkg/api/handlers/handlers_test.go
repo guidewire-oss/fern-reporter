@@ -167,20 +167,6 @@ var _ = Describe("Handlers", func() {
 				WithArgs(201).
 				WillReturnRows(specRunRows)
 
-			//tagJoinRows := sqlmock.NewRows([]string{"spec_run_id", "tag_id"}).
-			//	AddRow(301, 401)
-			//
-			//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_run_tags" WHERE "spec_run_tags"."spec_run_id" = $1`)).
-			//	WithArgs(301).
-			//	WillReturnRows(tagJoinRows)
-			//
-			//tagRows := sqlmock.NewRows([]string{"id", "name"}).
-			//	AddRow(401, "tag-1")
-
-			//mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "tags" WHERE "tags"."id" = $1`)).
-			//	WithArgs(401).
-			//	WillReturnRows(tagRows)
-
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request, _ = http.NewRequest("GET", "/testruns?fields=project,suiteruns", nil)
@@ -194,7 +180,6 @@ var _ = Describe("Handlers", func() {
 			Expect(len(testRuns)).To(Equal(1))
 			Expect(testRuns[0].Project.Name).To(Equal("project-name"))
 			Expect(testRuns[0].SuiteRuns[0].SuiteName).To(Equal("suite-1"))
-			//Expect(testRuns[0].SuiteRuns[0].SpecRuns[0].SpecDescription).To(Equal("spec-1"))
 		})
 	})
 
