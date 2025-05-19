@@ -37,7 +37,7 @@ jobs:
         run: make test
 
       - name: Publish coverage  # Pass the `coverage.out` output to this action
-        uses: codecov/codecov-action@v5.4.2
+        uses: codecov/codecov-action@v5.4.3
         with:
           file: profile.cov
           token: ${{ secrets.CODECOV_TOKEN }}
