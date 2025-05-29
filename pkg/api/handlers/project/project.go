@@ -1,10 +1,12 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"gorm.io/gorm/clause"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/guidewire/fern-reporter/pkg/models"
@@ -27,6 +29,12 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	project.Name = strings.TrimSpace(project.Name)
+
+	if err := h.db.Where("name = ?", project.Name).First(&project).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Project Name already exits"})
+		return
+	}
 
 	if err := h.db.Clauses(clause.Returning{}).Create(&project).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project"})
@@ -42,6 +50,21 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 
 	if err := h.db.Where("uuid = ?", id).First(&project).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+	project.Name = strings.TrimSpace(project.Name)
+
+	var existing models.ProjectDetails
+	err := h.db.Where("name = ?", project.Name).First(&existing).Error
+
+	if err == nil {
+		// Project with the same name exists and Id's are not same
+		if existing.UUID != id {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Project Name already exits"})
+			return
+		}
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query project name"})
 		return
 	}
 
