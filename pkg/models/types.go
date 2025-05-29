@@ -22,6 +22,7 @@ type TestRun struct {
 	BuildTriggerActor string     `json:"build_trigger_actor"`
 	BuildUrl          string     `json:"build_url"`
 	SuiteRuns         []SuiteRun `json:"suite_runs" gorm:"foreignKey:TestRunID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Status            string     `json:"status"`
 
 	// Relationship with ProjectDetails
 	Project ProjectDetails `gorm:"foreignKey:ProjectID;references:ID"`
