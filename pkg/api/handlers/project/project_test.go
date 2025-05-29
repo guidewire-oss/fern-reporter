@@ -88,6 +88,9 @@ var _ = Describe("Project Handlers", func() {
 				fmt.Printf("Error serializing SuiteRuns: %v", err)
 				return
 			}
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE name = $1 ORDER BY "project_details"."id" LIMIT $2`)).
+				WithArgs(projRequest.Name, 1).
+				WillReturnError(gorm.ErrRecordNotFound)
 
 			mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "project_details" ("name","team_name","comment","updated_at") VALUES ($1,$2,$3,$4) RETURNING *`)).
@@ -120,6 +123,35 @@ var _ = Describe("Project Handlers", func() {
 			Expect(project.TeamName).To(Equal(projRequest.TeamName))
 			Expect(project.Comment).To(Equal(projRequest.Comment))
 		})
+		It("with duplicate project name, it should return error", func() {
+			reqBody, err := json.Marshal(projRequest)
+			if err != nil {
+				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				return
+			}
+			projectRows := sqlmock.NewRows([]string{"id", "uuid", "name", "team_name", "comment"}).
+				AddRow(1, projectID, projRequest.Name, projRequest.TeamName, projRequest.Comment)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE name = $1 ORDER BY "project_details"."id" LIMIT $2`)).
+				WithArgs(projRequest.Name, 1).
+				WillReturnRows(projectRows)
+
+			req := httptest.NewRequest(http.MethodPost, "/api/project", bytes.NewBuffer([]byte(reqBody)))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+			handler := project.NewProjectHandler(gormDb)
+
+			handler.CreateProject(c)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+
+			var response map[string]interface{}
+			err = json.Unmarshal(w.Body.Bytes(), &response)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response["error"]).To(Equal("Project Name already exits"))
+		})
 	})
 
 	Context("when update project is invoked", func() {
@@ -144,6 +176,10 @@ var _ = Describe("Project Handlers", func() {
 
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE uuid = $1 ORDER BY "project_details"."id" LIMIT $2`)).
 				WithArgs(projectID, 1).
+				WillReturnRows(projectRows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE name = $1 ORDER BY "project_details"."id" LIMIT $2`)).
+				WithArgs(projRequest.Name, 1).
 				WillReturnRows(projectRows)
 
 			mock.ExpectBegin()
@@ -171,6 +207,45 @@ var _ = Describe("Project Handlers", func() {
 			Expect(project.Name).To(Equal(projRequest.Name))
 			Expect(project.TeamName).To(Equal(projRequest.TeamName))
 			Expect(project.Comment).To(Equal(projRequest.Comment))
+		})
+		It("with duplicate project name, it should not update the details and return 400", func() {
+
+			projectRows := sqlmock.NewRows([]string{"id", "uuid", "name", "team_name", "comment"}).
+				AddRow(1, projectID, projRequest.Name, projRequest.TeamName, projRequest.Comment)
+
+			projectRows1 := sqlmock.NewRows([]string{"id", "uuid", "name", "team_name", "comment"}).
+				AddRow(1, "96ad860-2a9a-504f-8861-aeafd0b2ae28", projRequest.Name, projRequest.TeamName, projRequest.Comment)
+
+			reqBody, err := json.Marshal(projRequest)
+			if err != nil {
+				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				return
+			}
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE uuid = $1 ORDER BY "project_details"."id" LIMIT $2`)).
+				WithArgs(projectID, 1).
+				WillReturnRows(projectRows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE name = $1 ORDER BY "project_details"."id" LIMIT $2`)).
+				WithArgs(projRequest.Name, 1).
+				WillReturnRows(projectRows1)
+
+			req := httptest.NewRequest(http.MethodPost, "/api/project", bytes.NewBuffer([]byte(reqBody)))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Params = append(c.Params, gin.Param{Key: "uuid", Value: projectID})
+			c.Request = req
+			handler := project.NewProjectHandler(gormDb)
+
+			handler.UpdateProject(c)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+
+			var response map[string]interface{}
+			err = json.Unmarshal(w.Body.Bytes(), &response)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(response["error"]).To(Equal("Project Name already exits"))
 		})
 		It("for invalid project UUID, it should not update return 404", func() {
 
