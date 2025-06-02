@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/guidewire/fern-reporter/pkg/datamigrations"
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql/handler/transport"
@@ -48,6 +49,8 @@ func initConfig() {
 
 func initDb() {
 	db.Initialize()
+	db.GetDb().Debug()
+	go datamigrations.BackfillTestRunStatus(db.GetDb())
 }
 
 func initServer() {
