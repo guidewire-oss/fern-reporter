@@ -87,16 +87,16 @@ func getProjectIDByUUID(db *gorm.DB, uuid string) (uint64, error) {
 }
 
 func computeTestRunStatus(testRun *models.TestRun) {
-	status := "PASSED"
+	status := models.StatusPassed
 
 	for _, suite := range testRun.SuiteRuns {
 		for _, spec := range suite.SpecRuns {
 			if strings.EqualFold(spec.Status, "FAILED") {
-				testRun.Status = "FAILED"
+				testRun.Status = models.StatusFailed
 				return
 			}
 			if strings.EqualFold(spec.Status, "SKIPPED") {
-				status = "SKIPPED"
+				status = models.StatusSkipped
 			}
 		}
 	}

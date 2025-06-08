@@ -9,6 +9,9 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type FavouriteProjectRequest struct {
@@ -20,34 +23,41 @@ type UserPreferenceRequest struct {
 	Timezone string `json:"timezone"`
 }
 
-type PreferredRequest struct {
-	Preferred []struct {
-		GroupID   uint64   `json:"group_id"` // will be empty for new group
-		GroupName string   `json:"group_name"`
-		Projects  []string `json:"projects"` // list of project UUIDs
-	} `json:"preferred"`
+type ProjectGroupsRequest struct {
+	ProjectGroups []struct {
+		GroupID      uint64   `json:"group_id"` // will be empty for new group
+		GroupName    string   `json:"group_name"`
+		ProjectUUIDs []string `json:"project_uuids"` // list of project UUIDs
+	} `json:"project_groups"`
 }
 
-type DeletePreferredRequest struct {
-	Preferred []struct {
+type DeleteProjectGroupRequest struct {
+	ProjectGroup []struct {
 		GroupID uint64 `json:"group_id"`
-	} `json:"preferred"`
+	} `json:"project_group"`
 }
 
 type ProjectSummary struct {
-	UUID string `json:"uuid"`
-	Name string `json:"name"`
+	UUID        string               `json:"uuid"`
+	Name        string               `json:"name"`
+	Status      models.TestRunStatus `json:"status"`
+	TestCount   uint64               `json:"test_count"`
+	TestPassed  uint64               `json:"test_passed"`
+	TestFailed  uint64               `json:"test_failed"`
+	TestSkipped uint64               `json:"test_skipped"`
+	Date        time.Time            `json:"date"`
+	GitBranch   string               `json:"git_branch"`
 }
 
-type GroupedProjects struct {
+type ProjectGroup struct {
 	GroupID   uint64           `json:"group_id"`
 	GroupName string           `json:"group_name"`
 	Projects  []ProjectSummary `json:"projects"`
 }
 
-type PreferenceResponse struct {
-	Cookie    string            `json:"cookie"`
-	Preferred []GroupedProjects `json:"preferred"`
+type ProjectGroupResponse struct {
+	Cookie        string         `json:"cookie"`
+	ProjectGroups []ProjectGroup `json:"project_groups"`
 }
 
 type UserHandler struct {
@@ -142,27 +152,27 @@ func (h *UserHandler) DeleteFavouriteProject(c *gin.Context) {
 }
 
 func (h *UserHandler) GetFavouriteProject(c *gin.Context) {
-    ucookie, _ := c.Cookie(utils.CookieName)
+	ucookie, _ := c.Cookie(utils.CookieName)
 
-    user, err := GetUserObject(h, ucookie)
-    if err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
-        return
-    }
+	user, err := GetUserObject(h, ucookie)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
+		return
+	}
 
-    var uuids []string
-    err = h.db.
-        Table("preferred_projects").
-        Joins("JOIN project_details ON preferred_projects.project_id = project_details.id").
-        Where("preferred_projects.user_id = ? AND preferred_projects.group_id IS NULL", user.ID).
-        Pluck("project_details.uuid", &uuids).Error
+	var uuids []string
+	err = h.db.
+		Table("preferred_projects").
+		Joins("JOIN project_details ON preferred_projects.project_id = project_details.id").
+		Where("preferred_projects.user_id = ? AND preferred_projects.group_id IS NULL", user.ID).
+		Pluck("project_details.uuid", &uuids).Error
 
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching favourite project uuids"})
-        return
-    }
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching favourite project uuids"})
+		return
+	}
 
-    c.JSON(http.StatusOK, uuids)
+	c.JSON(http.StatusOK, uuids)
 }
 
 func (h *UserHandler) SaveUserPreference(c *gin.Context) {
@@ -218,28 +228,28 @@ func (h *UserHandler) GetUserPreference(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, user)
 }
-func (h *UserHandler) SavePreferredProject(c *gin.Context) {
-	var preferredRequest PreferredRequest
+func (h *UserHandler) SaveProjectGroups(c *gin.Context) {
+	var projectGroupsRequest ProjectGroupsRequest
 	ucookie, _ := c.Cookie(utils.CookieName)
 
-	if err := c.ShouldBindJSON(&preferredRequest); err != nil {
+	if err := c.ShouldBindJSON(&projectGroupsRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Remove duplicate project entries if there are any
 	var groupIDs []uint64
-	for i, group := range preferredRequest.Preferred {
+	for i, group := range projectGroupsRequest.ProjectGroups {
 		seen := make(map[string]bool)
 		var uniqueProjects []string
 
-		for _, projectUUID := range group.Projects {
+		for _, projectUUID := range group.ProjectUUIDs {
 			if !seen[projectUUID] {
 				seen[projectUUID] = true
 				uniqueProjects = append(uniqueProjects, projectUUID)
 			}
 		}
-		preferredRequest.Preferred[i].Projects = uniqueProjects
+		projectGroupsRequest.ProjectGroups[i].ProjectUUIDs = uniqueProjects
 		if group.GroupID != 0 { // Only consider existing groups (non-zero group_id)
 			groupIDs = append(groupIDs, group.GroupID)
 		}
@@ -267,7 +277,7 @@ func (h *UserHandler) SavePreferredProject(c *gin.Context) {
 	// 3. Prepare all new preferred entries
 	var preferredEntries []models.PreferredProject
 
-	for _, group := range preferredRequest.Preferred {
+	for _, group := range projectGroupsRequest.ProjectGroups {
 		var groupModel models.ProjectGroup
 
 		// Try to find the group first
@@ -290,7 +300,7 @@ func (h *UserHandler) SavePreferredProject(c *gin.Context) {
 			return
 		}
 
-		for _, projectUUID := range group.Projects {
+		for _, projectUUID := range group.ProjectUUIDs {
 			var project models.ProjectDetails
 			if err := tx.Where("uuid = ?", projectUUID).First(&project).Error; err != nil {
 				// Optionally skip or log; skipping here
@@ -320,11 +330,11 @@ func (h *UserHandler) SavePreferredProject(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Preferred project updated for the Group Ids %v", groupIDs)
+	log.Printf("ProjectGroups updated for the Group Ids %v", groupIDs)
 	c.JSON(http.StatusCreated, gin.H{"status": "success"})
 }
 
-func (h *UserHandler) GetPreferredProject(c *gin.Context) {
+func (h *UserHandler) GetProjectGroups(c *gin.Context) {
 	ucookie, _ := c.Cookie(utils.CookieName)
 
 	// 1. Get the user
@@ -338,56 +348,125 @@ func (h *UserHandler) GetPreferredProject(c *gin.Context) {
 		return
 	}
 
-	// 2. Get preferred projects with their group and project details
+	groupIDStr := c.Query("group_id")
+	branch := c.Query("git_branch")
+
+	// 2. Get preferred projects
 	var preferred []models.PreferredProject
-	err := h.db.Preload("Project").
-		Preload("Group").
-		Where("user_id = ?", user.ID).
-		Find(&preferred).Error
+	query := h.db.Preload("Project").Preload("Group").Where("user_id = ?", user.ID)
+
+	if groupIDStr != "" {
+		if groupID, err := strconv.ParseUint(groupIDStr, 10, 64); err == nil {
+			query = query.Where("group_id = ?", groupID)
+		}
+	}
+
+	err := query.Find(&preferred).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching preferences"})
 		return
 	}
 
-	// Step 3: Group projects by group ID
-	groupMap := make(map[uint64]*GroupedProjects)
+	// 3. Get project summaries (filtering by branch if given)
+	projectSummaryMap, err := h.getProjectSummaryMapping(preferred, branch)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 4. Group by group ID
+	groupMap := make(map[uint64]*ProjectGroup)
 	for _, item := range preferred {
 		if item.Group == nil {
-			continue // skip ungrouped if needed
+			continue // skip ungrouped
 		}
 
 		groupID := item.Group.GroupID
 		if _, exists := groupMap[groupID]; !exists {
-			groupMap[groupID] = &GroupedProjects{
+			groupMap[groupID] = &ProjectGroup{
 				GroupID:   groupID,
 				GroupName: item.Group.GroupName,
 				Projects:  []ProjectSummary{},
 			}
 		}
 
-		groupMap[groupID].Projects = append(groupMap[groupID].Projects, ProjectSummary{
-			UUID: item.Project.UUID,
-			Name: item.Project.Name,
-		})
+		// Might be filtered out if branch doesn’t match
+		if summary, ok := projectSummaryMap[item.Project.UUID]; ok {
+			groupMap[groupID].Projects = append(groupMap[groupID].Projects, summary)
+		}
 	}
 
-	// Step 4: Convert map to slice
-	var grouped []GroupedProjects
+	// 5. Convert map to slice
+	var grouped []ProjectGroup
 	for _, group := range groupMap {
 		grouped = append(grouped, *group)
 	}
 
-	// Step 5: Return response
-	response := PreferenceResponse{
-		Cookie:    user.Cookie,
-		Preferred: grouped,
+	// 6. Return response
+	response := ProjectGroupResponse{
+		Cookie:        user.Cookie,
+		ProjectGroups: grouped,
 	}
 
 	c.JSON(http.StatusOK, response)
 }
 
-func (h *UserHandler) DeletePreferredProject(c *gin.Context) {
-	var req DeletePreferredRequest
+func (h *UserHandler) getProjectSummaryMapping(preferred []models.PreferredProject, branchFilter string) (map[string]ProjectSummary, error) {
+	projectSummaryMap := make(map[string]ProjectSummary)
+
+	for _, pref := range preferred {
+		var testRun models.TestRun
+		query := h.db.Model(&models.TestRun{})
+
+		query = query.Preload("SuiteRuns.SpecRuns").
+			Joins("JOIN project_details ON project_details.id = test_runs.project_id").
+			Where("project_details.uuid = ?", pref.Project.UUID)
+
+		if branchFilter != "" {
+			query = query.Where("test_runs.git_branch = ?", branchFilter)
+		}
+
+		query = query.Order("test_runs.end_time desc")
+
+		if err := query.First(&testRun).Error; err != nil {
+			return nil, fmt.Errorf("error fetching test run for project %s: %w", pref.Project.UUID, err)
+		}
+
+		summary := ProjectSummary{
+			UUID:      pref.Project.UUID,
+			Name:      pref.Project.Name,
+			Status:    testRun.Status,
+			Date:      testRun.EndTime,
+			GitBranch: testRun.GitBranch,
+		}
+
+		computeTestStatusCount(&summary, testRun)
+
+		projectSummaryMap[pref.Project.UUID] = summary
+	}
+
+	return projectSummaryMap, nil
+}
+
+func computeTestStatusCount(summary *ProjectSummary, testRun models.TestRun) {
+	for _, suite := range testRun.SuiteRuns {
+		for _, spec := range suite.SpecRuns {
+			switch strings.ToUpper(spec.Status) {
+			case "PASSED":
+				summary.TestPassed++
+			case "SKIPPED":
+				summary.TestSkipped++
+			case "FAILED":
+				summary.TestFailed++
+			}
+			summary.TestCount++
+		}
+	}
+}
+
+func (h *UserHandler) DeleteProjectGroups(c *gin.Context) {
+	var req DeleteProjectGroupRequest
 	ucookie, _ := c.Cookie(utils.CookieName)
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -404,7 +483,7 @@ func (h *UserHandler) DeletePreferredProject(c *gin.Context) {
 
 	// Collect group IDs to delete
 	var groupIDs []uint64
-	for _, pref := range req.Preferred {
+	for _, pref := range req.ProjectGroup {
 		if pref.GroupID != 0 {
 			groupIDs = append(groupIDs, pref.GroupID)
 		}

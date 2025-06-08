@@ -56,11 +56,13 @@ func RegisterRouters(router *gin.Engine) {
 		user.POST("/favourite", userHandler.SaveFavouriteProject)
 		user.DELETE("/favourite/:projectUUID", userHandler.DeleteFavouriteProject)
 		user.GET("/favourite", userHandler.GetFavouriteProject)
+
 		user.PUT("/preference", userHandler.SaveUserPreference)
 		user.GET("/preference", userHandler.GetUserPreference)
-		user.POST("/preferred", userHandler.SavePreferredProject)
-		user.GET("/preferred", userHandler.GetPreferredProject)
-		user.DELETE("/preferred", userHandler.DeletePreferredProject)
+
+		user.POST("/project-groups", userHandler.SaveProjectGroups)
+		user.GET("/project-groups", userHandler.GetProjectGroups)
+		user.DELETE("/project-groups", userHandler.DeleteProjectGroups)
 	}
 
 	var reports *gin.RouterGroup
