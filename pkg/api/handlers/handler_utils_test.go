@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"database/sql"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -21,26 +22,32 @@ import (
 	"gorm.io/gorm"
 )
 
-var _ = BeforeEach(func() {
-	db, mock, _ = sqlmock.New()
-
-	dialector := postgres.New(postgres.Config{
-		DSN:                  "sqlmock_db_0",
-		DriverName:           "postgres",
-		Conn:                 db,
-		PreferSimpleProtocol: true,
-	})
-	gormDb, _ = gorm.Open(dialector, &gorm.Config{})
-})
-
-var _ = AfterEach(func() {
-	err := db.Close()
-	if err != nil {
-		fmt.Printf("Unable to close the db connection %s", err.Error())
-	}
-})
-
 var _ = Describe("Insights test", func() {
+	var (
+		db     *sql.DB
+		gormDb *gorm.DB
+		mock   sqlmock.Sqlmock
+	)
+
+	var _ = BeforeEach(func() {
+		db, mock, _ = sqlmock.New()
+
+		dialector := postgres.New(postgres.Config{
+			DSN:                  "sqlmock_db_0",
+			DriverName:           "postgres",
+			Conn:                 db,
+			PreferSimpleProtocol: true,
+		})
+		gormDb, _ = gorm.Open(dialector, &gorm.Config{})
+	})
+
+	var _ = AfterEach(func() {
+		err := db.Close()
+		if err != nil {
+			fmt.Printf("Unable to close the db connection %s", err.Error())
+		}
+	})
+
 	Context("When ReportTestInsights is invoked", func() {
 		gin.SetMode(gin.TestMode)
 		router := gin.Default()

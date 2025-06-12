@@ -24,7 +24,7 @@ type TestRun struct {
 	SuiteRuns         []SuiteRun `json:"suite_runs" gorm:"foreignKey:TestRunID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 
 	// Relationship with ProjectDetails
-	Project ProjectDetails `gorm:"foreignKey:ProjectID;references:ID"`
+	Project ProjectDetails `json:"project" gorm:"foreignKey:ProjectID;references:ID"`
 }
 
 type SuiteRun struct {
