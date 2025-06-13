@@ -74,9 +74,9 @@ var _ = Describe("RegisterRouters", func() {
 			ExpectRoute(router, "GET", "/api/user/favourite", userHandler.GetFavouriteProject)
 			ExpectRoute(router, "PUT", "/api/user/preference", userHandler.SaveUserPreference)
 			ExpectRoute(router, "GET", "/api/user/preference", userHandler.GetUserPreference)
-			ExpectRoute(router, "POST", "/api/user/preferred", userHandler.SavePreferredProject)
-			ExpectRoute(router, "GET", "/api/user/preferred", userHandler.GetPreferredProject)
-			ExpectRoute(router, "DELETE", "/api/user/preferred", userHandler.DeletePreferredProject)
+			ExpectRoute(router, "POST", "/api/user/project-groups", userHandler.SaveProjectGroups)
+			ExpectRoute(router, "GET", "/api/user/project-groups", userHandler.GetProjectGroups)
+			ExpectRoute(router, "DELETE", "/api/user/project-groups", userHandler.DeleteProjectGroups)
 		})
 
 		It("should register report routes", func() {

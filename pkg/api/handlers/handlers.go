@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/models"
@@ -67,6 +68,8 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 		return // Stop further processing if tag processing fails
 	}
 
+	computeTestRunStatus(&testRun)
+
 	// Save or update the testRun record in the database
 	if err := gdb.Save(&testRun).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error saving record"})
@@ -81,6 +84,24 @@ func getProjectIDByUUID(db *gorm.DB, uuid string) (uint64, error) {
 		return 0, err
 	}
 	return project.ID, nil
+}
+
+func computeTestRunStatus(testRun *models.TestRun) {
+	status := models.StatusPassed
+
+	for _, suite := range testRun.SuiteRuns {
+		for _, spec := range suite.SpecRuns {
+			if strings.EqualFold(spec.Status, "FAILED") {
+				testRun.Status = models.StatusFailed
+				return
+			}
+			if strings.EqualFold(spec.Status, "SKIPPED") {
+				status = models.StatusSkipped
+			}
+		}
+	}
+
+	testRun.Status = status
 }
 
 func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {

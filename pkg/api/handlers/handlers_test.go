@@ -125,6 +125,7 @@ var _ = Describe("Handlers", func() {
 				BuildTriggerActor: "Actor Name",
 				BuildUrl:          "https://someurl.com",
 				TestSeed:          0,
+				Status:            "PASSED",
 				SuiteRuns: []models.SuiteRun{
 					{
 						ID:        1,
@@ -161,8 +162,8 @@ var _ = Describe("Handlers", func() {
 				WillReturnRows(rows)
 
 			mock.ExpectBegin()
-			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","project_id","test_seed","start_time","end_time","git_branch","git_sha","build_trigger_actor","build_url") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "id"`)).
-				WithArgs(expectedTestRun.TestProjectName, expectedProject.ID, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl).
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","project_id","test_seed","start_time","end_time","git_branch","git_sha","build_trigger_actor","build_url","status") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "id"`)).
+				WithArgs(expectedTestRun.TestProjectName, expectedProject.ID, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl, expectedTestRun.Status).
 				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 			mock.ExpectCommit()
 
@@ -1064,8 +1065,8 @@ var _ = Describe("Handlers", func() {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT suite_runs.id AS suite_run_id, 
 			suite_runs.suite_name,
             test_runs.start_time, 
-            COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'passed') AS total_passed_spec_runs, 
-			COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'skipped') AS total_skipped_spec_runs, 
+            COUNT(spec_runs.id) FILTER (WHERE LOWER(spec_runs.status) = 'passed') AS total_passed_spec_runs, 
+			COUNT(spec_runs.id) FILTER (WHERE LOWER(spec_runs.status) = 'skipped') AS total_skipped_spec_runs, 
             COUNT(spec_runs.id) AS total_spec_runs FROM "test_runs" 
                 INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id 
                 INNER JOIN spec_runs ON suite_runs.id = spec_runs.suite_id 
