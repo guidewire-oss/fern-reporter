@@ -297,9 +297,9 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 				WithArgs(ucookie, 1).
 				WillReturnRows(user_rows)
 
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "project_details"."uuid" FROM "preferred_projects"
-				JOIN project_details ON preferred_projects.project_id = project_details.id
-				WHERE preferred_projects.user_id = $1 AND preferred_projects.group_id IS NULL`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "project_details"."uuid" FROM "preferred_projects" 
+			JOIN project_details ON preferred_projects.project_id = project_details.id 
+			WHERE preferred_projects.user_id = $1 AND preferred_projects.group_id IS NULL`)).
 				WithArgs(1).
 				WillReturnRows(project_rows)
 
@@ -359,9 +359,9 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 				WithArgs(ucookie, 1).
 				WillReturnRows(user_rows)
 
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "project_details"."uuid" FROM "preferred_projects"
-				JOIN project_details ON preferred_projects.project_id = project_details.id
-				WHERE preferred_projects.user_id = $1 AND preferred_projects.group_id IS NULL`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "project_details"."uuid" FROM "preferred_projects" 
+			JOIN project_details ON preferred_projects.project_id = project_details.id 
+			WHERE preferred_projects.user_id = $1 AND preferred_projects.group_id IS NULL`)).
 				WithArgs(1).
 				WillReturnError(errors.New("Database error"))
 
@@ -760,6 +760,8 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 			// Create request
 			req := httptest.NewRequest(http.MethodDelete, "/api/user/preference", bytes.NewBuffer([]byte(reqBody)))
 			req.Header.Set("Content-Type", "application/json")
+
+			// Set the cookie on the request
 			req.AddCookie(&http.Cookie{
 				Name:  utils.CookieName,
 				Value: ucookie,
@@ -780,8 +782,8 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 			Expect(responseBody.ProjectGroups).To(Not(BeEmpty()))
 			Expect(responseBody.ProjectGroups[0].GroupName).To(Equal("First Group"))
 			Expect(len(responseBody.ProjectGroups[0].Projects)).To(Equal(2))
+			Expect(responseBody.ProjectGroups[0].Projects[0].UUID).To(Equal("96ad860-2a9a-504f-8861-aeafd0b2ae29"))
 		})
-
 		It("for empty project groups details, will return empty object", func() {
 			reqBody, err := json.Marshal("")
 			if err != nil {

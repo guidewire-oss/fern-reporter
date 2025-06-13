@@ -137,53 +137,8 @@ func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {
 }
 
 func (h *Handler) GetTestRunAll(c *gin.Context) {
-
 	var testRuns []models.TestRun
-
-	projectUUID := c.Query("project_uuid")
-	sortBy := c.DefaultQuery("sort_by", "end_time")
-	order := c.DefaultQuery("order", "desc")
-	fields := strings.Split(c.DefaultQuery("fields", ""), ",")
-
-	allowedSortFields := map[string]bool{
-		"end_time":   true,
-		"start_time": true,
-		"status":     true,
-	}
-	if !allowedSortFields[sortBy] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sort_by field"})
-		return
-	}
-
-	if order != "asc" && order != "desc" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "order must be 'asc' or 'desc'"})
-		return
-	}
-
-	query := h.db.Model(&models.TestRun{})
-
-	for _, field := range fields {
-		switch strings.ToLower(strings.TrimSpace(field)) {
-		case "project":
-			query = query.Preload("Project")
-		case "suiteruns":
-			query = query.Preload("SuiteRuns.SpecRuns")
-		}
-	}
-
-	if projectUUID != "" {
-		log.Println()
-		query = query.Joins("JOIN project_details ON project_details.id = test_runs.project_id").
-			Where("project_details.uuid = ?", projectUUID)
-	}
-
-	query = query.Order(fmt.Sprintf("test_runs.%s %s", sortBy, order))
-
-	if err := query.Find(&testRuns).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
+	h.db.Find(&testRuns)
 	c.JSON(http.StatusOK, testRuns)
 }
 

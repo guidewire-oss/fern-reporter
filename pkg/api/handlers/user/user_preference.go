@@ -353,7 +353,9 @@ func (h *UserHandler) GetProjectGroups(c *gin.Context) {
 
 	// 2. Get preferred projects
 	var preferred []models.PreferredProject
-	query := h.db.Preload("Project").Preload("Group").Where("user_id = ?", user.ID)
+	query := h.db.Preload("Project").
+		Preload("Group").
+		Where("user_id = ?", user.ID)
 
 	if groupIDStr != "" {
 		if groupID, err := strconv.ParseUint(groupIDStr, 10, 64); err == nil {
@@ -391,7 +393,6 @@ func (h *UserHandler) GetProjectGroups(c *gin.Context) {
 			}
 		}
 
-		// Might be filtered out if branch doesn’t match
 		if summary, ok := projectSummaryMap[item.Project.UUID]; ok {
 			groupMap[groupID].Projects = append(groupMap[groupID].Projects, summary)
 		}
