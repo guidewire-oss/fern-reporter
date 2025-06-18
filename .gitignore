@@ -25,3 +25,6 @@ go.work
 bin/
 
 .git-authors
+
+# Test coverage files
+profile.cov
