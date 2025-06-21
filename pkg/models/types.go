@@ -33,7 +33,7 @@ type TestRun struct {
 	Status            TestRunStatus `gorm:"type:test_run_status"`
 
 	// Relationship with ProjectDetails
-	Project ProjectDetails `gorm:"foreignKey:ProjectID;references:ID"`
+	Project ProjectDetails `json:"project" gorm:"foreignKey:ProjectID;references:ID"`
 }
 
 type SuiteRun struct {
