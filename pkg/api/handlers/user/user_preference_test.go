@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
-	"time"
 )
 
 var (
@@ -282,111 +281,6 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		})
 	})
 
-	Context("when get favourite project is invoked", func() {
-		It("will return favourite project list and return 200 OK", func() {
-			projectUUIDs := []string{"96ad8601-2a9a-504f-8861-aeafd0b2ae29", "59e06cf8-f390-5093-af2e-3685be593a25"}
-
-			user_rows := sqlmock.NewRows([]string{"id", "cookie"}).
-				AddRow(1, ucookie)
-
-			project_rows := sqlmock.NewRows([]string{"uuid"}).
-				AddRow(projectUUIDs[0]).
-				AddRow(projectUUIDs[1])
-
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "app_users" WHERE cookie = $1 ORDER BY "app_users"."id" LIMIT $2`)).
-				WithArgs(ucookie, 1).
-				WillReturnRows(user_rows)
-
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "project_details"."uuid" FROM "preferred_projects" 
-			JOIN project_details ON preferred_projects.project_id = project_details.id 
-			WHERE preferred_projects.user_id = $1 AND preferred_projects.group_id IS NULL`)).
-				WithArgs(1).
-				WillReturnRows(project_rows)
-
-			req := httptest.NewRequest(http.MethodGet, "/api/user/favourite", nil)
-			req.AddCookie(&http.Cookie{
-				Name:  utils.CookieName,
-				Value: ucookie,
-			})
-
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Request = req
-
-			handler := user.NewUserHandler(gormDb)
-			handler.GetFavouriteProject(c)
-
-			Expect(w.Code).To(Equal(http.StatusOK))
-
-			var response []string
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(response).To(Equal(projectUUIDs))
-		})
-
-		It("will return 404 if user is not found", func() {
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "app_users" WHERE cookie = $1 ORDER BY "app_users"."id" LIMIT $2`)).
-				WithArgs(ucookie, 1).
-				WillReturnError(errors.New("Record not found"))
-
-			req := httptest.NewRequest(http.MethodGet, "/api/user/favourite", nil)
-			req.AddCookie(&http.Cookie{
-				Name:  utils.CookieName,
-				Value: ucookie,
-			})
-
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Request = req
-
-			handler := user.NewUserHandler(gormDb)
-			handler.GetFavouriteProject(c)
-
-			Expect(w.Code).To(Equal(http.StatusNotFound))
-
-			var response map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(response["error"]).To(ContainSubstring("User ID not found"))
-		})
-
-		It("will return 500 if there is an error fetching favourite projects", func() {
-			user_rows := sqlmock.NewRows([]string{"id", "cookie"}).
-				AddRow(1, ucookie)
-
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "app_users" WHERE cookie = $1 ORDER BY "app_users"."id" LIMIT $2`)).
-				WithArgs(ucookie, 1).
-				WillReturnRows(user_rows)
-
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "project_details"."uuid" FROM "preferred_projects" 
-			JOIN project_details ON preferred_projects.project_id = project_details.id 
-			WHERE preferred_projects.user_id = $1 AND preferred_projects.group_id IS NULL`)).
-				WithArgs(1).
-				WillReturnError(errors.New("Database error"))
-
-			req := httptest.NewRequest(http.MethodGet, "/api/user/favourite", nil)
-			req.AddCookie(&http.Cookie{
-				Name:  utils.CookieName,
-				Value: ucookie,
-			})
-
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Request = req
-
-			handler := user.NewUserHandler(gormDb)
-			handler.GetFavouriteProject(c)
-
-			Expect(w.Code).To(Equal(http.StatusInternalServerError))
-
-			var response map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(response["error"]).To(Equal("error fetching favourite project uuids"))
-		})
-	})
-
 	Context("when save user preference is invoked", func() {
 		var userPrefRequest = user.UserPreferenceRequest{
 			IsDark:   true,
@@ -478,23 +372,23 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		})
 	})
 
-	Context("when save project groups is invoked", func() {
+	Context("when save preferred project is invoked", func() {
 
-		projectGroupRequest := user.ProjectGroupsRequest{
-			ProjectGroups: []struct {
-				GroupID      uint64   `json:"group_id"`
-				GroupName    string   `json:"group_name"`
-				ProjectUUIDs []string `json:"project_uuids"`
+		prefRequest := user.PreferredRequest{
+			Preferred: []struct {
+				GroupID   uint64   `json:"group_id"`
+				GroupName string   `json:"group_name"`
+				Projects  []string `json:"projects"`
 			}{
 				{
-					GroupID:      0, // Empty group (new group creation)
-					GroupName:    "First Favorite Group",
-					ProjectUUIDs: []string{projectId},
+					GroupID:   0, // Empty group (new group creation)
+					GroupName: "First Favorite Group",
+					Projects:  []string{projectId},
 				},
 			},
 		}
 		It("with a new group and project, it should create one and return 201 OK", func() {
-			reqBody, err := json.Marshal(projectGroupRequest)
+			reqBody, err := json.Marshal(prefRequest)
 			if err != nil {
 				fmt.Printf("Error serializing SuiteRuns: %v", err)
 				return
@@ -548,7 +442,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 
 			handler := user.NewUserHandler(gormDb)
 
-			handler.SaveProjectGroups(c)
+			handler.SavePreferredProject(c)
 
 			Expect(w.Code).To(Equal(201))
 			Expect(w.Body.String()).To(ContainSubstring("{\"status\":\"success\"}"))
@@ -556,21 +450,21 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		})
 		It("with an existing group and project, it should create one and return 201 OK", func() {
 
-			projectGroupRequest := user.ProjectGroupsRequest{
-				ProjectGroups: []struct {
-					GroupID      uint64   `json:"group_id"`
-					GroupName    string   `json:"group_name"`
-					ProjectUUIDs []string `json:"project_uuids"`
+			prefRequest := user.PreferredRequest{
+				Preferred: []struct {
+					GroupID   uint64   `json:"group_id"`
+					GroupName string   `json:"group_name"`
+					Projects  []string `json:"projects"`
 				}{
 					{
-						GroupID:      1,
-						GroupName:    "First Favorite Group",
-						ProjectUUIDs: []string{projectId},
+						GroupID:   1,
+						GroupName: "First Favorite Group",
+						Projects:  []string{projectId},
 					},
 				},
 			}
 
-			reqBody, err := json.Marshal(projectGroupRequest)
+			reqBody, err := json.Marshal(prefRequest)
 			if err != nil {
 				fmt.Printf("Error serializing SuiteRuns: %v", err)
 				return
@@ -611,7 +505,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 			mock.ExpectCommit()
 
 			// Create request
-			req := httptest.NewRequest(http.MethodDelete, "/api/user/project-groups", bytes.NewBuffer([]byte(reqBody)))
+			req := httptest.NewRequest(http.MethodDelete, "/api/user/preference", bytes.NewBuffer([]byte(reqBody)))
 			req.Header.Set("Content-Type", "application/json")
 
 			// Set the cookie on the request
@@ -626,7 +520,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 
 			handler := user.NewUserHandler(gormDb)
 
-			handler.SaveProjectGroups(c)
+			handler.SavePreferredProject(c)
 
 			Expect(w.Code).To(Equal(201))
 			Expect(w.Body.String()).To(ContainSubstring("{\"status\":\"success\"}"))
@@ -634,26 +528,26 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		})
 	})
 
-	Context("when get project groups is invoked", func() {
+	Context("when get preferred project is invoked", func() {
 
-		It("will return project group details", func() {
-			ucookie := "some-cookie"
-			projectId := "96ad860-2a9a-504f-8861-aeafd0b2ae29"
-
+		It("will return preferred project details", func() {
 			reqBody, err := json.Marshal("")
-			Expect(err).ToNot(HaveOccurred())
+			if err != nil {
+				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				return
+			}
 
-			user_rows := sqlmock.NewRows([]string{"id", "is_dark", "timezone", "cookie"}).
+			user_rows := sqlmock.NewRows([]string{"ID", "IsDark", "Timezone", "Cookie"}).
 				AddRow(1, true, "America/New_York", ucookie)
 
-			project_group_rows := sqlmock.NewRows([]string{"group_id", "user_id", "group_name"}).
+			project_group_rows := sqlmock.NewRows([]string{"GroupID", "UserID", "GroupName"}).
 				AddRow(1, 1, "First Group")
 
-			project_rows := sqlmock.NewRows([]string{"id", "uuid", "name"}).
+			project_rows := sqlmock.NewRows([]string{"ID", "UUID", "Name"}).
 				AddRow(1, projectId, "First Project").
 				AddRow(2, "59e06cf8-f390-5093-af2e-3685be593a25", "Second Project")
 
-			preferred_projects := sqlmock.NewRows([]string{"id", "user_id", "project_id", "group_id"}).
+			preferred_projects := sqlmock.NewRows([]string{"ID", "UserID", "ProjectID", "GroupID"}).
 				AddRow(1, 1, 1, 1).
 				AddRow(2, 1, 2, 1)
 
@@ -673,90 +567,6 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 				WithArgs(1, 2).
 				WillReturnRows(project_rows)
 
-			// -- TEST_RUNS for first project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_runs"."id","test_runs"."test_project_name","test_runs"."project_id","test_runs"."test_seed","test_runs"."start_time","test_runs"."end_time","test_runs"."git_branch","test_runs"."git_sha","test_runs"."build_trigger_actor","test_runs"."build_url","test_runs"."status" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 ORDER BY test_runs.end_time desc,"test_runs"."id" LIMIT $2`)).
-				WithArgs("96ad860-2a9a-504f-8861-aeafd0b2ae29", 1).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_project_name", "project_id", "test_seed", "start_time", "end_time",
-					"git_branch", "git_sha", "build_trigger_actor", "build_url", "status",
-				}).AddRow(
-					183,
-					"Example Project",
-					1,
-					123456,
-					time.Now().Add(-1*time.Hour),
-					time.Now(),
-					"main",
-					"abcdef1234567890",
-					"johndoe",
-					"http://ci.example.com/build/1",
-					"PASSED",
-				))
-
-			// -- SUITE_RUNS preload for first project (executed immediately after first test_runs query) --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
-				WithArgs(183).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_run_id", "suite_name",
-				}).AddRow(
-					358,
-					183,
-					"Login Suite",
-				))
-
-			// -- SPEC_RUNS preload for first project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
-				WithArgs(358).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "suite_id", "status",
-				}).AddRow(
-					1001,
-					358,
-					"PASSED",
-				))
-
-			// -- TEST_RUNS for second project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_runs"."id","test_runs"."test_project_name","test_runs"."project_id","test_runs"."test_seed","test_runs"."start_time","test_runs"."end_time","test_runs"."git_branch","test_runs"."git_sha","test_runs"."build_trigger_actor","test_runs"."build_url","test_runs"."status" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 ORDER BY test_runs.end_time desc,"test_runs"."id" LIMIT $2`)).
-				WithArgs("59e06cf8-f390-5093-af2e-3685be593a25", 1).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_project_name", "project_id", "test_seed", "start_time", "end_time",
-					"git_branch", "git_sha", "build_trigger_actor", "build_url", "status",
-				}).AddRow(
-					184,
-					"Second Project",
-					2,
-					789012,
-					time.Now().Add(-2*time.Hour),
-					time.Now().Add(-1*time.Hour),
-					"main",
-					"def456789012345",
-					"janedoe",
-					"http://ci.example.com/build/2",
-					"FAILED",
-				))
-
-			// -- SUITE_RUNS preload for second project (executed immediately after second test_runs query) --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
-				WithArgs(184).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_run_id", "suite_name",
-				}).AddRow(
-					359,
-					184,
-					"Registration Suite",
-				))
-
-			// -- SPEC_RUNS preload for second project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
-				WithArgs(359).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "suite_id", "status",
-				}).AddRow(
-					1002,
-					359,
-					"FAILED",
-				))
-
 			// Create request
 			req := httptest.NewRequest(http.MethodDelete, "/api/user/preference", bytes.NewBuffer([]byte(reqBody)))
 			req.Header.Set("Content-Type", "application/json")
@@ -772,19 +582,19 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 			c.Request = req
 
 			handler := user.NewUserHandler(gormDb)
-			handler.GetProjectGroups(c)
+			handler.GetPreferredProject(c)
 
-			var responseBody user.ProjectGroupResponse
+			var responseBody user.PreferenceResponse
 			err = json.Unmarshal(w.Body.Bytes(), &responseBody)
-			Expect(err).ToNot(HaveOccurred())
 
+			Expect(err).ToNot(HaveOccurred())
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(responseBody.ProjectGroups).To(Not(BeEmpty()))
-			Expect(responseBody.ProjectGroups[0].GroupName).To(Equal("First Group"))
-			Expect(len(responseBody.ProjectGroups[0].Projects)).To(Equal(2))
-			Expect(responseBody.ProjectGroups[0].Projects[0].UUID).To(Equal("96ad860-2a9a-504f-8861-aeafd0b2ae29"))
+			Expect(responseBody.Preferred).To(Not(Equal(0)))
+			Expect(responseBody.Preferred[0].GroupName).To(Equal("First Group"))
+			Expect(len(responseBody.Preferred[0].Projects)).To(Equal(2))
+			Expect(responseBody.Preferred[0].Projects[0].UUID).To(Equal("96ad860-2a9a-504f-8861-aeafd0b2ae29"))
 		})
-		It("for empty project groups details, will return empty object", func() {
+		It("for empty preferred project details, will return empty object", func() {
 			reqBody, err := json.Marshal("")
 			if err != nil {
 				fmt.Printf("Error serializing SuiteRuns: %v", err)
@@ -827,28 +637,28 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 			c.Request = req
 
 			handler := user.NewUserHandler(gormDb)
-			handler.GetProjectGroups(c)
+			handler.GetPreferredProject(c)
 
-			var responseBody user.ProjectGroupResponse
+			var responseBody user.PreferenceResponse
 			err = json.Unmarshal(w.Body.Bytes(), &responseBody)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(responseBody.ProjectGroups).To(BeNil())
+			Expect(responseBody.Preferred).To(BeNil())
 		})
 	})
 
-	Context("when delete project groups is invoked", func() {
+	Context("when delete preferred project is invoked", func() {
 
-		delPrefRequest := user.DeleteProjectGroupRequest{
-			ProjectGroup: []struct {
+		delPrefRequest := user.DeletePreferredRequest{
+			Preferred: []struct {
 				GroupID uint64 `json:"group_id"`
 			}{{
 				GroupID: 1,
 			}},
 		}
 
-		It("will delete project group", func() {
+		It("will delete preferred project", func() {
 			reqBody, err := json.Marshal(delPrefRequest)
 			if err != nil {
 				fmt.Printf("Error serializing SuiteRuns: %v", err)
@@ -887,7 +697,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 			c.Request = req
 
 			handler := user.NewUserHandler(gormDb)
-			handler.DeleteProjectGroups(c)
+			handler.DeletePreferredProject(c)
 
 			Expect(w.Code).To(Equal(200))
 			Expect(w.Body.String()).To(ContainSubstring("{\"status\":\"deleted\"}"))

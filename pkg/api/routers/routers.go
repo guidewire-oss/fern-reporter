@@ -37,6 +37,7 @@ func RegisterRouters(router *gin.Engine) {
 		testRun.POST("/", handler.CreateTestRun)
 		testRun.PUT("/:id", handler.UpdateTestRun)
 		testRun.DELETE("/:id", handler.DeleteTestRun)
+		testRun.GET("/project-groups", handler.GetProjectGroupsSummary)
 
 		testReport := api.Group("/reports")
 		testReport.GET("/projects/", projectHandler.GetAllProjectsForReport)
@@ -55,14 +56,11 @@ func RegisterRouters(router *gin.Engine) {
 		user := api.Group("/user")
 		user.POST("/favourite", userHandler.SaveFavouriteProject)
 		user.DELETE("/favourite/:projectUUID", userHandler.DeleteFavouriteProject)
-		user.GET("/favourite", userHandler.GetFavouriteProject)
-
 		user.PUT("/preference", userHandler.SaveUserPreference)
 		user.GET("/preference", userHandler.GetUserPreference)
-
-		user.POST("/project-groups", userHandler.SaveProjectGroups)
-		user.GET("/project-groups", userHandler.GetProjectGroups)
-		user.DELETE("/project-groups", userHandler.DeleteProjectGroups)
+		user.POST("/preferred", userHandler.SavePreferredProject)
+		user.GET("/preferred", userHandler.GetPreferredProject)
+		user.DELETE("/preferred", userHandler.DeletePreferredProject)
 	}
 
 	var reports *gin.RouterGroup
