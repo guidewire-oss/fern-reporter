@@ -312,7 +312,7 @@ func (h *Handler) GetTestSummary(c *gin.Context) {
 	c.JSON(http.StatusOK, testSummaries)
 }
 
-func (h *Handler) GetProjectGroupsSummary(c *gin.Context) {
+func (h *Handler) GetProjectGroups(c *gin.Context) {
 	ucookie, _ := c.Cookie(utils.CookieName)
 
 	// 1. Get the user

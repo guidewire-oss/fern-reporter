@@ -63,7 +63,7 @@ var _ = Describe("RegisterRouters", func() {
 			ExpectRoute(router, "POST", "/api/testrun/", handler.CreateTestRun)
 			ExpectRoute(router, "PUT", "/api/testrun/:id", handler.UpdateTestRun)
 			ExpectRoute(router, "DELETE", "/api/testrun/:id", handler.DeleteTestRun)
-			ExpectRoute(router, "GET", "/api/testrun/project-groups", handler.GetProjectGroupsSummary)
+			ExpectRoute(router, "GET", "/api/testrun/project-groups", handler.GetProjectGroups)
 
 			ExpectRoute(router, "GET", "/api/project", projectHandler.GetAllProjects)
 			ExpectRoute(router, "POST", "/api/project", projectHandler.CreateProject)
