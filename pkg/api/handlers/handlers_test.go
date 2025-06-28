@@ -1144,89 +1144,25 @@ var _ = Describe("Handlers", func() {
 				WithArgs(1, 2).
 				WillReturnRows(project_rows)
 
-			// -- TEST_RUNS for first project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_runs"."id","test_runs"."test_project_name","test_runs"."project_id","test_runs"."test_seed","test_runs"."start_time","test_runs"."end_time","test_runs"."git_branch","test_runs"."git_sha","test_runs"."build_trigger_actor","test_runs"."build_url","test_runs"."status" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 ORDER BY test_runs.end_time desc,"test_runs"."id" LIMIT $2`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_seed" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 ORDER BY test_seed DESC LIMIT $2`)).
 				WithArgs("96ad860-2a9a-504f-8861-aeafd0b2ae29", 1).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_project_name", "project_id", "test_seed", "start_time", "end_time",
-					"git_branch", "git_sha", "build_trigger_actor", "build_url", "status",
-				}).AddRow(
-					183,
-					"Example Project",
-					1,
-					123456,
-					time.Now().Add(-1*time.Hour),
-					time.Now(),
-					"main",
-					"abcdef1234567890",
-					"johndoe",
-					"http://ci.example.com/build/1",
-					"PASSED",
-				))
+				WillReturnRows(sqlmock.NewRows([]string{"test_seed"}).AddRow(123456))
 
-			// -- SUITE_RUNS preload for first project (executed immediately after first test_runs query) --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
-				WithArgs(183).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed,SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped,SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed,COUNT(*) AS test_count,MAX(test_runs.git_branch) AS git_branch FROM "test_runs" JOIN suite_runs ON suite_runs.test_run_id = test_runs.id JOIN spec_runs ON spec_runs.suite_id = suite_runs.id JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.test_seed = $2 `)).
+				WithArgs("96ad860-2a9a-504f-8861-aeafd0b2ae29", 123456).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_run_id", "suite_name",
-				}).AddRow(
-					358,
-					183,
-					"Login Suite",
-				))
+					"test_passed", "test_skipped", "test_failed", "test_count", "git_branch",
+				}).AddRow(4, 2, 1, 7, "main"))
 
-			// -- SPEC_RUNS preload for first project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
-				WithArgs(358).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "suite_id", "status",
-				}).AddRow(
-					1001,
-					358,
-					"PASSED",
-				))
-
-			// -- TEST_RUNS for second project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_runs"."id","test_runs"."test_project_name","test_runs"."project_id","test_runs"."test_seed","test_runs"."start_time","test_runs"."end_time","test_runs"."git_branch","test_runs"."git_sha","test_runs"."build_trigger_actor","test_runs"."build_url","test_runs"."status" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 ORDER BY test_runs.end_time desc,"test_runs"."id" LIMIT $2`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_seed" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 ORDER BY test_seed DESC LIMIT $2`)).
 				WithArgs("59e06cf8-f390-5093-af2e-3685be593a25", 1).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_project_name", "project_id", "test_seed", "start_time", "end_time",
-					"git_branch", "git_sha", "build_trigger_actor", "build_url", "status",
-				}).AddRow(
-					184,
-					"Second Project",
-					2,
-					789012,
-					time.Now().Add(-2*time.Hour),
-					time.Now().Add(-1*time.Hour),
-					"main",
-					"def456789012345",
-					"janedoe",
-					"http://ci.example.com/build/2",
-					"FAILED",
-				))
+				WillReturnRows(sqlmock.NewRows([]string{"test_seed"}).AddRow(234567))
 
-			// -- SUITE_RUNS preload for second project (executed immediately after second test_runs query) --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
-				WithArgs(184).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed,SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped,SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed,COUNT(*) AS test_count,MAX(test_runs.git_branch) AS git_branch FROM "test_runs" JOIN suite_runs ON suite_runs.test_run_id = test_runs.id JOIN spec_runs ON spec_runs.suite_id = suite_runs.id JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.test_seed = $2 `)).
+				WithArgs("59e06cf8-f390-5093-af2e-3685be593a25", 234567).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_run_id", "suite_name",
-				}).AddRow(
-					359,
-					184,
-					"Registration Suite",
-				))
-
-			// -- SPEC_RUNS preload for second project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
-				WithArgs(359).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "suite_id", "status",
-				}).AddRow(
-					1002,
-					359,
-					"FAILED",
-				))
+					"test_passed", "test_skipped", "test_failed", "test_count", "git_branch",
+				}).AddRow(2, 2, 1, 5, "feature/payment"))
 
 			// Create request
 			req := httptest.NewRequest(http.MethodGet, "/api/testrun/project-groups", bytes.NewBuffer([]byte(reqBody)))
@@ -1292,89 +1228,25 @@ var _ = Describe("Handlers", func() {
 				WithArgs(1, 2).
 				WillReturnRows(project_rows)
 
-			// -- TEST_RUNS for first project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_runs"."id","test_runs"."test_project_name","test_runs"."project_id","test_runs"."test_seed","test_runs"."start_time","test_runs"."end_time","test_runs"."git_branch","test_runs"."git_sha","test_runs"."build_trigger_actor","test_runs"."build_url","test_runs"."status" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.git_branch = $2 ORDER BY test_runs.end_time desc,"test_runs"."id" LIMIT $3`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_seed" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.git_branch = $2 ORDER BY test_seed DESC LIMIT $3`)).
 				WithArgs("96ad860-2a9a-504f-8861-aeafd0b2ae29", "main", 1).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_project_name", "project_id", "test_seed", "start_time", "end_time",
-					"git_branch", "git_sha", "build_trigger_actor", "build_url", "status",
-				}).AddRow(
-					183,
-					"Example Project",
-					1,
-					123456,
-					time.Now().Add(-1*time.Hour),
-					time.Now(),
-					"main",
-					"abcdef1234567890",
-					"johndoe",
-					"http://ci.example.com/build/1",
-					"PASSED",
-				))
+				WillReturnRows(sqlmock.NewRows([]string{"test_seed"}).AddRow(123456))
 
-			// -- SUITE_RUNS preload for first project (executed immediately after first test_runs query) --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
-				WithArgs(183).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed,SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped,SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed,COUNT(*) AS test_count,MAX(test_runs.git_branch) AS git_branch FROM "test_runs" JOIN suite_runs ON suite_runs.test_run_id = test_runs.id JOIN spec_runs ON spec_runs.suite_id = suite_runs.id JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.test_seed = $2 `)).
+				WithArgs("96ad860-2a9a-504f-8861-aeafd0b2ae29", 123456).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_run_id", "suite_name",
-				}).AddRow(
-					358,
-					183,
-					"Login Suite",
-				))
+					"test_passed", "test_skipped", "test_failed", "test_count", "git_branch",
+				}).AddRow(4, 2, 1, 7, "main"))
 
-			// -- SPEC_RUNS preload for first project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
-				WithArgs(358).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "suite_id", "status",
-				}).AddRow(
-					1001,
-					358,
-					"PASSED",
-				))
-
-			// -- TEST_RUNS for second project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_runs"."id","test_runs"."test_project_name","test_runs"."project_id","test_runs"."test_seed","test_runs"."start_time","test_runs"."end_time","test_runs"."git_branch","test_runs"."git_sha","test_runs"."build_trigger_actor","test_runs"."build_url","test_runs"."status" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.git_branch = $2 ORDER BY test_runs.end_time desc,"test_runs"."id" LIMIT $3`)).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_seed" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.git_branch = $2 ORDER BY test_seed DESC LIMIT $3`)).
 				WithArgs("59e06cf8-f390-5093-af2e-3685be593a25", "main", 1).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_project_name", "project_id", "test_seed", "start_time", "end_time",
-					"git_branch", "git_sha", "build_trigger_actor", "build_url", "status",
-				}).AddRow(
-					184,
-					"Second Project",
-					2,
-					789012,
-					time.Now().Add(-2*time.Hour),
-					time.Now().Add(-1*time.Hour),
-					"main",
-					"def456789012345",
-					"janedoe",
-					"http://ci.example.com/build/2",
-					"FAILED",
-				))
+				WillReturnRows(sqlmock.NewRows([]string{"test_seed"}).AddRow(234567))
 
-			// -- SUITE_RUNS preload for second project (executed immediately after second test_runs query) --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "suite_runs" WHERE "suite_runs"."test_run_id" = $1`)).
-				WithArgs(184).
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed,SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped,SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed,COUNT(*) AS test_count,MAX(test_runs.git_branch) AS git_branch FROM "test_runs" JOIN suite_runs ON suite_runs.test_run_id = test_runs.id JOIN spec_runs ON spec_runs.suite_id = suite_runs.id JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.test_seed = $2 `)).
+				WithArgs("59e06cf8-f390-5093-af2e-3685be593a25", 234567).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "test_run_id", "suite_name",
-				}).AddRow(
-					359,
-					184,
-					"Registration Suite",
-				))
-
-			// -- SPEC_RUNS preload for second project --
-			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "spec_runs" WHERE "spec_runs"."suite_id" = $1`)).
-				WithArgs(359).
-				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "suite_id", "status",
-				}).AddRow(
-					1002,
-					359,
-					"FAILED",
-				))
+					"test_passed", "test_skipped", "test_failed", "test_count", "git_branch",
+				}).AddRow(2, 2, 1, 5, "main"))
 
 			// Create request
 			req := httptest.NewRequest(http.MethodGet, "/api/testrun/project-groups?group_id=1&git_branch=main", bytes.NewBuffer([]byte(reqBody)))

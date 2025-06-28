@@ -399,10 +399,11 @@ func (h *Handler) getProjectSummaryMapping(preferred []models.PreferredProject, 
 	projectSummaryMap := make(map[string]ProjectSummary)
 
 	for _, pref := range preferred {
-		var testRun models.TestRun
-		query := h.db.Model(&models.TestRun{})
+		var latestTestSeed int64
 
-		query = query.Preload("SuiteRuns.SpecRuns").
+		// Step 1: Fetch only latest test_seed (no full TestRun)
+		query := h.db.Model(&models.TestRun{}).
+			Select("test_seed").
 			Joins("JOIN project_details ON project_details.id = test_runs.project_id").
 			Where("project_details.uuid = ?", pref.Project.UUID)
 
@@ -410,41 +411,72 @@ func (h *Handler) getProjectSummaryMapping(preferred []models.PreferredProject, 
 			query = query.Where("test_runs.git_branch = ?", branchFilter)
 		}
 
-		query = query.Order("test_runs.end_time desc")
+		err := query.Order("test_seed DESC").
+			Limit(1).
+			Pluck("test_seed", &latestTestSeed).Error
 
-		if err := query.First(&testRun).Error; err != nil {
-			return nil, fmt.Errorf("error fetching test run for project %s: %w", pref.Project.UUID, err)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch latest test_seed for project %s: %w", pref.Project.UUID, err)
 		}
 
-		summary := ProjectSummary{
-			UUID:      pref.Project.UUID,
-			Name:      pref.Project.Name,
-			Status:    testRun.Status,
-			Date:      testRun.EndTime,
-			GitBranch: testRun.GitBranch,
+		if latestTestSeed == 0 {
+			continue // No test runs for this project
 		}
 
-		computeTestStatusCount(&summary, testRun)
+		// Step 2: Aggregate test status summary for this test_seed
+		var stats struct {
+			TestPassed  uint64
+			TestSkipped uint64
+			TestFailed  uint64
+			TestCount   uint64
+			GitBranch   string
+		}
 
-		projectSummaryMap[pref.Project.UUID] = summary
+		err = h.db.Model(&models.TestRun{}).
+			Select([]string{
+				"SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed",
+				"SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped",
+				"SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed",
+				"COUNT(*) AS test_count",
+				"MAX(test_runs.git_branch) AS git_branch",
+			}).
+			Joins("JOIN suite_runs ON suite_runs.test_run_id = test_runs.id").
+			Joins("JOIN spec_runs ON spec_runs.suite_id = suite_runs.id").
+			Joins("JOIN project_details ON project_details.id = test_runs.project_id").
+			Where("project_details.uuid = ? AND test_runs.test_seed = ?", pref.Project.UUID, latestTestSeed).
+			Scan(&stats).Error
+
+		if err != nil {
+			return nil, fmt.Errorf("aggregation failed for project %s: %w", pref.Project.UUID, err)
+		}
+
+		projectSummary := ProjectSummary{
+			UUID:        pref.Project.UUID,
+			Name:        pref.Project.Name,
+			Date:        time.Unix(latestTestSeed, 0),
+			GitBranch:   stats.GitBranch,
+			TestPassed:  stats.TestPassed,
+			TestSkipped: stats.TestSkipped,
+			TestFailed:  stats.TestFailed,
+			TestCount:   stats.TestCount,
+		}
+
+		projectSummary.Status = computeProjectSummaryStatus(stats.TestFailed, stats.TestSkipped)
+
+		// Step 3: Create project summary entry
+		projectSummaryMap[pref.Project.UUID] = projectSummary
 	}
 
 	return projectSummaryMap, nil
 }
 
-func computeTestStatusCount(summary *ProjectSummary, testRun models.TestRun) {
-	for _, suite := range testRun.SuiteRuns {
-		for _, spec := range suite.SpecRuns {
-			switch strings.ToUpper(spec.Status) {
-			case "PASSED":
-				summary.TestPassed++
-			case "SKIPPED":
-				summary.TestSkipped++
-			case "FAILED":
-				summary.TestFailed++
-			}
-			summary.TestCount++
-		}
+func computeProjectSummaryStatus(failed uint64, skipped uint64) models.TestRunStatus {
+	if failed > 0 {
+		return models.StatusFailed
+	} else if skipped > 0 {
+		return models.StatusSkipped
+	} else {
+		return models.StatusPassed
 	}
 }
 
