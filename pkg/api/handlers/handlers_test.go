@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/guidewire/fern-reporter/pkg/utils"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -125,6 +126,7 @@ var _ = Describe("Handlers", func() {
 				BuildTriggerActor: "Actor Name",
 				BuildUrl:          "https://someurl.com",
 				TestSeed:          0,
+				Status:            "PASSED",
 				SuiteRuns: []models.SuiteRun{
 					{
 						ID:        1,
@@ -161,8 +163,8 @@ var _ = Describe("Handlers", func() {
 				WillReturnRows(rows)
 
 			mock.ExpectBegin()
-			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","project_id","test_seed","start_time","end_time","git_branch","git_sha","build_trigger_actor","build_url") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING "id"`)).
-				WithArgs(expectedTestRun.TestProjectName, expectedProject.ID, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl).
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "test_runs" ("test_project_name","project_id","test_seed","start_time","end_time","git_branch","git_sha","build_trigger_actor","build_url","status") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING "id"`)).
+				WithArgs(expectedTestRun.TestProjectName, expectedProject.ID, expectedTestRun.TestSeed, expectedTestRun.StartTime, expectedTestRun.EndTime, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl, expectedTestRun.Status).
 				WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 			mock.ExpectCommit()
 
@@ -1064,8 +1066,8 @@ var _ = Describe("Handlers", func() {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT suite_runs.id AS suite_run_id, 
 			suite_runs.suite_name,
             test_runs.start_time, 
-            COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'passed') AS total_passed_spec_runs, 
-			COUNT(spec_runs.id) FILTER (WHERE spec_runs.status = 'skipped') AS total_skipped_spec_runs, 
+            COUNT(spec_runs.id) FILTER (WHERE LOWER(spec_runs.status) = 'passed') AS total_passed_spec_runs, 
+			COUNT(spec_runs.id) FILTER (WHERE LOWER(spec_runs.status) = 'skipped') AS total_skipped_spec_runs, 
             COUNT(spec_runs.id) AS total_spec_runs FROM "test_runs" 
                 INNER JOIN suite_runs ON test_runs.id = suite_runs.test_run_id 
                 INNER JOIN spec_runs ON suite_runs.id = spec_runs.suite_id 
@@ -1100,6 +1102,232 @@ var _ = Describe("Handlers", func() {
 				"TotalSpecRuns": 12
 			}]`
 			Expect(w.Body.String()).To(MatchJSON(expectedJSON))
+		})
+	})
+
+	Context("when get project groups is invoked", func() {
+		projectId := "96ad860-2a9a-504f-8861-aeafd0b2ae29"
+		ucookie := "5c0fc06d-26d9-4202-a1f3-2d024e957171"
+
+		It("will return project group details", func() {
+
+			reqBody, err := json.Marshal("")
+			Expect(err).ToNot(HaveOccurred())
+
+			user_rows := sqlmock.NewRows([]string{"id", "is_dark", "timezone", "cookie"}).
+				AddRow(1, true, "America/New_York", ucookie)
+
+			project_group_rows := sqlmock.NewRows([]string{"group_id", "user_id", "group_name"}).
+				AddRow(1, 1, "First Group")
+
+			project_rows := sqlmock.NewRows([]string{"id", "uuid", "name"}).
+				AddRow(1, projectId, "First Project").
+				AddRow(2, "59e06cf8-f390-5093-af2e-3685be593a25", "Second Project")
+
+			preferred_projects := sqlmock.NewRows([]string{"id", "user_id", "project_id", "group_id"}).
+				AddRow(1, 1, 1, 1).
+				AddRow(2, 1, 2, 1)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "app_users" WHERE cookie = $1 ORDER BY "app_users"."id" LIMIT $2`)).
+				WithArgs(ucookie, 1).
+				WillReturnRows(user_rows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "preferred_projects" WHERE user_id = $1`)).
+				WithArgs(1).
+				WillReturnRows(preferred_projects)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_groups" WHERE "project_groups"."group_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(project_group_rows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE "project_details"."id" IN ($1,$2)`)).
+				WithArgs(1, 2).
+				WillReturnRows(project_rows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_seed" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 ORDER BY test_seed DESC LIMIT $2`)).
+				WithArgs("96ad860-2a9a-504f-8861-aeafd0b2ae29", 1).
+				WillReturnRows(sqlmock.NewRows([]string{"test_seed"}).AddRow(123456))
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed,SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped,SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed,COUNT(*) AS test_count,MAX(test_runs.git_branch) AS git_branch FROM "test_runs" JOIN suite_runs ON suite_runs.test_run_id = test_runs.id JOIN spec_runs ON spec_runs.suite_id = suite_runs.id JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.test_seed = $2 `)).
+				WithArgs("96ad860-2a9a-504f-8861-aeafd0b2ae29", 123456).
+				WillReturnRows(sqlmock.NewRows([]string{
+					"test_passed", "test_skipped", "test_failed", "test_count", "git_branch",
+				}).AddRow(4, 2, 1, 7, "main"))
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_seed" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 ORDER BY test_seed DESC LIMIT $2`)).
+				WithArgs("59e06cf8-f390-5093-af2e-3685be593a25", 1).
+				WillReturnRows(sqlmock.NewRows([]string{"test_seed"}).AddRow(234567))
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed,SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped,SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed,COUNT(*) AS test_count,MAX(test_runs.git_branch) AS git_branch FROM "test_runs" JOIN suite_runs ON suite_runs.test_run_id = test_runs.id JOIN spec_runs ON spec_runs.suite_id = suite_runs.id JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.test_seed = $2 `)).
+				WithArgs("59e06cf8-f390-5093-af2e-3685be593a25", 234567).
+				WillReturnRows(sqlmock.NewRows([]string{
+					"test_passed", "test_skipped", "test_failed", "test_count", "git_branch",
+				}).AddRow(2, 2, 1, 5, "feature/payment"))
+
+			// Create request
+			req := httptest.NewRequest(http.MethodGet, "/api/testrun/project-groups", bytes.NewBuffer([]byte(reqBody)))
+			req.Header.Set("Content-Type", "application/json")
+
+			// Set the cookie on the request
+			req.AddCookie(&http.Cookie{
+				Name:  utils.CookieName,
+				Value: ucookie,
+			})
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+
+			handler := handlers.NewHandler(gormDb)
+			handler.GetProjectGroups(c)
+
+			var responseBody handlers.ProjectGroupResponse
+			err = json.Unmarshal(w.Body.Bytes(), &responseBody)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(responseBody.ProjectGroups).To(Not(BeEmpty()))
+			Expect(responseBody.ProjectGroups[0].GroupName).To(Equal("First Group"))
+			Expect(len(responseBody.ProjectGroups[0].Projects)).To(Equal(2))
+			Expect(responseBody.ProjectGroups[0].Projects[0].UUID).To(Equal("96ad860-2a9a-504f-8861-aeafd0b2ae29"))
+			Expect(responseBody.ProjectGroups[0].Projects[1].UUID).To(Equal("59e06cf8-f390-5093-af2e-3685be593a25"))
+		})
+
+		It("will return project group details filtered by group_id and git_branch", func() {
+
+			reqBody, err := json.Marshal("")
+			Expect(err).ToNot(HaveOccurred())
+
+			user_rows := sqlmock.NewRows([]string{"id", "is_dark", "timezone", "cookie"}).
+				AddRow(1, true, "America/New_York", ucookie)
+
+			project_group_rows := sqlmock.NewRows([]string{"group_id", "user_id", "group_name"}).
+				AddRow(1, 1, "First Group")
+
+			project_rows := sqlmock.NewRows([]string{"id", "uuid", "name"}).
+				AddRow(1, projectId, "First Project").
+				AddRow(2, "59e06cf8-f390-5093-af2e-3685be593a25", "Second Project")
+
+			preferred_projects := sqlmock.NewRows([]string{"id", "user_id", "project_id", "group_id"}).
+				AddRow(1, 1, 1, 1).
+				AddRow(2, 1, 2, 1)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "app_users" WHERE cookie = $1 ORDER BY "app_users"."id" LIMIT $2`)).
+				WithArgs(ucookie, 1).
+				WillReturnRows(user_rows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "preferred_projects" WHERE user_id = $1 AND group_id = $2`)).
+				WithArgs(1, 1).
+				WillReturnRows(preferred_projects)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_groups" WHERE "project_groups"."group_id" = $1`)).
+				WithArgs(1).
+				WillReturnRows(project_group_rows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE "project_details"."id" IN ($1,$2)`)).
+				WithArgs(1, 2).
+				WillReturnRows(project_rows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_seed" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.git_branch = $2 ORDER BY test_seed DESC LIMIT $3`)).
+				WithArgs("96ad860-2a9a-504f-8861-aeafd0b2ae29", "main", 1).
+				WillReturnRows(sqlmock.NewRows([]string{"test_seed"}).AddRow(123456))
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed,SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped,SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed,COUNT(*) AS test_count,MAX(test_runs.git_branch) AS git_branch FROM "test_runs" JOIN suite_runs ON suite_runs.test_run_id = test_runs.id JOIN spec_runs ON spec_runs.suite_id = suite_runs.id JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.test_seed = $2 `)).
+				WithArgs("96ad860-2a9a-504f-8861-aeafd0b2ae29", 123456).
+				WillReturnRows(sqlmock.NewRows([]string{
+					"test_passed", "test_skipped", "test_failed", "test_count", "git_branch",
+				}).AddRow(4, 2, 1, 7, "main"))
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT "test_seed" FROM "test_runs" JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.git_branch = $2 ORDER BY test_seed DESC LIMIT $3`)).
+				WithArgs("59e06cf8-f390-5093-af2e-3685be593a25", "main", 1).
+				WillReturnRows(sqlmock.NewRows([]string{"test_seed"}).AddRow(234567))
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed,SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped,SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed,COUNT(*) AS test_count,MAX(test_runs.git_branch) AS git_branch FROM "test_runs" JOIN suite_runs ON suite_runs.test_run_id = test_runs.id JOIN spec_runs ON spec_runs.suite_id = suite_runs.id JOIN project_details ON project_details.id = test_runs.project_id WHERE project_details.uuid = $1 AND test_runs.test_seed = $2 `)).
+				WithArgs("59e06cf8-f390-5093-af2e-3685be593a25", 234567).
+				WillReturnRows(sqlmock.NewRows([]string{
+					"test_passed", "test_skipped", "test_failed", "test_count", "git_branch",
+				}).AddRow(2, 2, 1, 5, "main"))
+
+			// Create request
+			req := httptest.NewRequest(http.MethodGet, "/api/testrun/project-groups?group_id=1&git_branch=main", bytes.NewBuffer([]byte(reqBody)))
+			req.Header.Set("Content-Type", "application/json")
+
+			// Set the cookie on the request
+			req.AddCookie(&http.Cookie{
+				Name:  utils.CookieName,
+				Value: ucookie,
+			})
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+
+			handler := handlers.NewHandler(gormDb)
+			handler.GetProjectGroups(c)
+
+			var responseBody handlers.ProjectGroupResponse
+			err = json.Unmarshal(w.Body.Bytes(), &responseBody)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(responseBody.ProjectGroups).To(Not(BeEmpty()))
+			Expect(responseBody.ProjectGroups[0].GroupName).To(Equal("First Group"))
+			Expect(len(responseBody.ProjectGroups[0].Projects)).To(Equal(2))
+			Expect(responseBody.ProjectGroups[0].Projects[0].UUID).To(Equal("96ad860-2a9a-504f-8861-aeafd0b2ae29"))
+			Expect(responseBody.ProjectGroups[0].Projects[1].UUID).To(Equal("59e06cf8-f390-5093-af2e-3685be593a25"))
+		})
+
+		It("for empty project groups details, will return empty object", func() {
+			reqBody, err := json.Marshal("")
+			if err != nil {
+				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				return
+			}
+
+			user_rows := sqlmock.NewRows([]string{"ID", "IsDark", "Timezone", "Cookie"}).
+				AddRow(1, true, "America/New_York", ucookie)
+
+			project_rows := sqlmock.NewRows([]string{"ID", "UUID", "Name"}).
+				AddRow(1, projectId, "First Project").
+				AddRow(2, "59e06cf8-f390-5093-af2e-3685be593a25", "Second Project")
+
+			preferred_projects := sqlmock.NewRows([]string{"ID", "UserID", "ProjectID", "GroupID"}) //empty rows
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "app_users" WHERE cookie = $1 ORDER BY "app_users"."id" LIMIT $2`)).
+				WithArgs(ucookie, 1).
+				WillReturnRows(user_rows)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "preferred_projects" WHERE user_id = $1`)).
+				WithArgs(1).
+				WillReturnRows(preferred_projects)
+
+			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE "project_details"."id" IN ($1,$2)`)).
+				WithArgs(1, 2).
+				WillReturnRows(project_rows)
+
+			// Create request
+			req := httptest.NewRequest(http.MethodDelete, "/api/user/preference", bytes.NewBuffer([]byte(reqBody)))
+			req.Header.Set("Content-Type", "application/json")
+
+			// Set the cookie on the request
+			req.AddCookie(&http.Cookie{
+				Name:  utils.CookieName,
+				Value: ucookie,
+			})
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+
+			handler := handlers.NewHandler(gormDb)
+			handler.GetProjectGroups(c)
+
+			var responseBody handlers.ProjectGroupResponse
+			err = json.Unmarshal(w.Body.Bytes(), &responseBody)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(responseBody.ProjectGroups).To(BeNil())
 		})
 	})
 })
