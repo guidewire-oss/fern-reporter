@@ -3,10 +3,10 @@ package handlers
 import (
 	"errors"
 	"fmt"
-
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/models"
 	"github.com/guidewire/fern-reporter/pkg/utils"
+	"strings"
 
 	"log"
 	"net/http"
@@ -173,7 +173,54 @@ func (h *Handler) DeleteTestRun(c *gin.Context) {
 
 func (h *Handler) ReportTestRunAll(c *gin.Context) {
 	var testRuns []models.TestRun
-	h.db.Preload("SuiteRuns.SpecRuns.Tags").Preload("Project").Find(&testRuns)
+
+	filter, err := NewTestRunFilterFromQuery(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	query := h.db.Preload("SuiteRuns.SpecRuns.Tags").Preload("Project")
+
+	// Optional Filters
+	if filter.ProjectID != "" {
+		query = query.Where("project_id = ?", filter.ProjectID)
+	}
+	if filter.GitBranch != "" {
+		query = query.Where("git_branch = ?", filter.GitBranch)
+	}
+	if filter.GitSha != "" {
+		query = query.Where("git_sha LIKE ?", filter.GitSha+"%")
+	}
+	if filter.StartTime != nil {
+		query = query.Where("start_time >= ?", *filter.StartTime)
+	}
+	if filter.EndTime != nil {
+		query = query.Where("end_time < ?", *filter.EndTime)
+	}
+
+	// Filter by tags, if provided
+	if len(filter.Tags) > 0 {
+		var testRunIDs []uint
+		if err := h.db.
+			Table("test_runs").
+			Joins("JOIN suite_runs ON suite_runs.test_run_id = test_runs.id").
+			Joins("JOIN spec_runs ON spec_runs.suite_id = suite_runs.id").
+			Joins("JOIN spec_run_tags ON spec_run_tags.spec_run_id = spec_runs.id").
+			Joins("JOIN tags ON tags.id = spec_run_tags.tag_id").
+			Where("tags.name IN ?", filter.Tags).
+			Distinct("test_runs.id").
+			Scan(&testRunIDs).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		query = query.Where("test_runs.id IN ?", testRunIDs)
+	}
+
+	if err := query.Find(&testRuns).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"testRuns":     testRuns,
@@ -271,4 +318,55 @@ func (h *Handler) Ping(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "Fern Reporter is running!",
 	})
+}
+
+func NewTestRunFilterFromQuery(c *gin.Context) (*models.TestQueryFilter, error) {
+	var filter models.TestQueryFilter
+
+	// Allowed query parameters
+	allowedParams := map[string]bool{
+		"project_id": true,
+		"git_branch": true,
+		"git_sha":    true,
+		"start_time": true,
+		"end_time":   true,
+		"tags":       true,
+	}
+
+	// Validate that no unexpected query params are present
+	for key := range c.Request.URL.Query() {
+		if !allowedParams[key] {
+			return nil, fmt.Errorf("invalid query parameter: '%s'", key)
+		}
+	}
+
+	filter.ProjectID = c.Query("project_id")
+	filter.GitBranch = c.Query("git_branch")
+	filter.GitSha = c.Query("git_sha")
+
+	if start := c.Query("start_time"); start != "" {
+		t, err := time.Parse("2006-01-02", start)
+		if err != nil {
+			return nil, fmt.Errorf("invalid start_time format (expected YYYY-MM-DD): %v", err)
+		}
+		filter.StartTime = &t
+	}
+
+	if end := c.Query("end_time"); end != "" {
+		t, err := time.Parse("2006-01-02", end)
+		if err != nil {
+			return nil, fmt.Errorf("invalid end_time format (expected YYYY-MM-DD): %v", err)
+		}
+		filter.EndTime = &t
+	}
+
+	if filter.StartTime != nil && filter.EndTime != nil && filter.StartTime.After(*filter.EndTime) {
+		return nil, fmt.Errorf("start_time must be before or equal to end_time")
+	}
+
+	if tags := c.Query("tags"); tags != "" {
+		filter.Tags = strings.Split(tags, ",")
+	}
+
+	return &filter, nil
 }

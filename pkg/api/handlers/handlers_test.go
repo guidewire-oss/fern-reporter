@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gorm.io/driver/sqlite"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,10 @@ import (
 	"github.com/guidewire/fern-reporter/pkg/api/handlers"
 	"github.com/guidewire/fern-reporter/pkg/models"
 )
+
+type TestDataSetup struct {
+	DB *gorm.DB
+}
 
 var _ = Describe("Handlers", func() {
 	var (
@@ -1101,5 +1106,230 @@ var _ = Describe("Handlers", func() {
 			}]`
 			Expect(w.Body.String()).To(MatchJSON(expectedJSON))
 		})
+	})
+})
+
+type response struct {
+	TestRuns     []models.TestRun `json:"testRuns"`
+	ReportHeader string           `json:"reportHeader"`
+	Total        int              `json:"total"`
+}
+
+func setupTestDB() *gorm.DB {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database: " + err.Error())
+	}
+	if err := db.AutoMigrate(&models.ProjectDetails{}, &models.TestRun{}, &models.SuiteRun{}, &models.SpecRun{}, &models.Tag{}); err != nil {
+		panic("failed to migrate database: " + err.Error())
+	}
+	return db
+}
+
+func (s *TestDataSetup) InsertTestData(
+	projectID uint64, projectName, projectUUID string,
+	testRunID uint64, gitBranch, gitSha, testProjectName string, startTime time.Time,
+	suiteRunID uint64, suiteName string,
+	tagNames []string,
+	specDescription, status, message string,
+) {
+	project := models.ProjectDetails{
+		ID:   projectID,
+		UUID: projectUUID,
+	}
+
+	s.DB.FirstOrCreate(&project, models.ProjectDetails{
+		ID: projectID,
+	})
+
+	testRun := models.TestRun{
+		ID:              testRunID,
+		ProjectID:       projectID,
+		GitBranch:       gitBranch,
+		GitSha:          gitSha,
+		StartTime:       startTime,
+		TestProjectName: testProjectName,
+	}
+	s.DB.Create(&testRun)
+
+	suiteRun := models.SuiteRun{
+		ID:        suiteRunID,
+		TestRunID: testRunID,
+		SuiteName: suiteName,
+		StartTime: time.Now(),
+		EndTime:   time.Now(),
+	}
+	s.DB.Create(&suiteRun)
+
+	// Create tag records and collect references
+	var tags []models.Tag
+	for _, name := range tagNames {
+		tag := models.Tag{Name: name}
+		s.DB.FirstOrCreate(&tag, models.Tag{Name: name}) // avoids duplicate tags if reused
+		tags = append(tags, tag)
+	}
+
+	specRun := models.SpecRun{
+		SuiteID:         suiteRunID,
+		SpecDescription: specDescription,
+		Status:          status,
+		Message:         message,
+		StartTime:       time.Now(),
+		EndTime:         time.Now(),
+		Tags:            tags,
+	}
+	s.DB.Create(&specRun)
+
+	// Establish many2many relationship
+	for i := range tags {
+		err := s.DB.Model(&specRun).Association("Tags").Append(tags[i])
+		if err != nil {
+			return
+		}
+	}
+}
+
+var _ = Describe("ReportTestRunAll", func() {
+	var (
+		db *gorm.DB
+		h  *handlers.Handler
+		r  *gin.Engine
+	)
+
+	BeforeEach(func() {
+		gin.SetMode(gin.TestMode)
+		db = setupTestDB()
+		setup := &TestDataSetup{DB: db}
+		setup.InsertTestData(
+			1, "Test Project 1", "uuid-123",
+			1, "main", "abcdef1234567890", "Smoke Project", time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC),
+			1, "suite1",
+			[]string{"smoke", "regression"},
+			"Test spec", "passed", "",
+		)
+		setup.InsertTestData(
+			2, "Test Project 2", "uuid-234",
+			2, "chore/test", "abcdef1234567890", "Smoke Project", time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC),
+			2, "suite2",
+			[]string{"smoke", "regression"},
+			"Test spec", "passed", "",
+		)
+		setup.InsertTestData(
+			1, "Test Project 1", "uuid-123",
+			3, "main", "abcdef1sdaadw", "Smoke Project", time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC),
+			3, "suite3",
+			[]string{"acceptance", "regression"},
+			"Test spec", "passed", "",
+		)
+
+		h = handlers.NewHandler(db)
+		r = gin.Default()
+		r.GET("/reports/testruns", h.ReportTestRunAll)
+	})
+
+	It("returns all test runs with no filters", func() {
+		req, _ := http.NewRequest("GET", "/reports/testruns", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		var resp response
+		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+		Expect(resp.Total).To(Equal(3))
+		Expect(resp.TestRuns[0].GitBranch).To(Equal("main"))
+	})
+
+	It("filters test runs by project_id", func() {
+		req, _ := http.NewRequest("GET", "/reports/testruns?project_id=1", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		var resp response
+		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+		Expect(resp.Total).To(Equal(2))
+		Expect(resp.TestRuns[0].ProjectID).To(Equal(uint64(1)))
+		Expect(resp.TestRuns[1].ProjectID).To(Equal(uint64(1)))
+	})
+
+	It("returns no test runs for non-matching project_id", func() {
+		req, _ := http.NewRequest("GET", "/reports/testruns?project_id=999", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		var resp response
+		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+		Expect(resp.Total).To(Equal(0))
+	})
+
+	It("filters test runs by tag name", func() {
+		req, _ := http.NewRequest("GET", "/reports/testruns?tags=smoke", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+
+		var resp response
+		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+		Expect(resp.Total).To(Equal(2))
+		Expect(resp.TestRuns[0].GitSha).To(Equal("abcdef1234567890"))
+		Expect(resp.TestRuns[0].ProjectID).To(Equal(uint64(1)))
+		Expect(resp.TestRuns[1].ProjectID).To(Equal(uint64(2)))
+	})
+
+	It("filters test runs by multiple query filters", func() {
+		startTime := time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC)
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/reports/testruns?project_id=1&git_sha=abcdef1234567890&start_time=%s&tags=smoke", startTime.Format("2006-01-02")), nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+
+		var resp response
+		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+		Expect(resp.Total).To(Equal(1))
+		Expect(resp.TestRuns[0].GitSha).To(Equal("abcdef1234567890"))
+	})
+
+	It("should give an error when filters test runs by start time and end time with invalid range", func() {
+		startTime := time.Now()
+		endTime := time.Now().Add(-48 * time.Hour)
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/reports/testruns?start_time=%s&end_time=%s", startTime.Format("2006-01-02"), endTime.Format("2006-01-02")), nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
+
+		var resp response
+		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+		Expect(resp.Total).To(Equal(0))
+	})
+
+	It("filters test runs by multiple query filters and multiple tags", func() {
+		req, _ := http.NewRequest("GET", "/reports/testruns?git_sha=abcdef1234567890&tags=smoke,regression", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+
+		var resp response
+		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+		Expect(resp.Total).To(Equal(2))
+		Expect(resp.TestRuns[0].GitSha).To(Equal("abcdef1234567890"))
+		Expect(resp.TestRuns[0].ProjectID).To(Equal(uint64(1)))
+		Expect(resp.TestRuns[1].ProjectID).To(Equal(uint64(2)))
+	})
+
+	It("should give an error when filtering test runs by a non existent filter ", func() {
+		req, _ := http.NewRequest("GET", "/reports/testruns?nonexistentfilter=abc", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
+
+		var resp response
+		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+		Expect(resp.Total).To(Equal(0))
 	})
 })

@@ -53,6 +53,7 @@ func RegisterRouters(router *gin.Engine) {
 		testReport.GET("/projects/", projectHandler.GetAllProjectsForReport)
 		testReport.GET("/summary/:projectId/", handler.GetTestSummary)
 		testReport.GET("/testruns/", handler.ReportTestRunAll)
+		testReport.GET("/testruns", handler.ReportTestRunAll)
 		testReport.GET("/testruns/:id/", handler.ReportTestRunById)
 
 		// Project
