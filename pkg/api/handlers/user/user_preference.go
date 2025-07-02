@@ -142,27 +142,27 @@ func (h *UserHandler) DeleteFavouriteProject(c *gin.Context) {
 }
 
 func (h *UserHandler) GetFavouriteProject(c *gin.Context) {
-    ucookie, _ := c.Cookie(utils.CookieName)
+	ucookie, _ := c.Cookie(utils.CookieName)
 
-    user, err := GetUserObject(h, ucookie)
-    if err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
-        return
-    }
+	user, err := GetUserObject(h, ucookie)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
+		return
+	}
 
-    var uuids []string
-    err = h.db.
-        Table("preferred_projects").
-        Joins("JOIN project_details ON preferred_projects.project_id = project_details.id").
-        Where("preferred_projects.user_id = ? AND preferred_projects.group_id IS NULL", user.ID).
-        Pluck("project_details.uuid", &uuids).Error
+	var uuids []string
+	err = h.db.
+		Table("preferred_projects").
+		Joins("JOIN project_details ON preferred_projects.project_id = project_details.id").
+		Where("preferred_projects.user_id = ? AND preferred_projects.group_id IS NULL", user.ID).
+		Pluck("project_details.uuid", &uuids).Error
 
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching favourite project uuids"})
-        return
-    }
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching favourite project uuids"})
+		return
+	}
 
-    c.JSON(http.StatusOK, uuids)
+	c.JSON(http.StatusOK, uuids)
 }
 
 func (h *UserHandler) SaveUserPreference(c *gin.Context) {

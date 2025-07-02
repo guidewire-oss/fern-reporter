@@ -3,6 +3,8 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/models"
@@ -19,6 +21,29 @@ import (
 
 type Handler struct {
 	db *gorm.DB
+}
+
+type ProjectSummary struct {
+	UUID        string               `json:"uuid"`
+	Name        string               `json:"name"`
+	Status      models.TestRunStatus `json:"status"`
+	TestCount   uint64               `json:"test_count"`
+	TestPassed  uint64               `json:"test_passed"`
+	TestFailed  uint64               `json:"test_failed"`
+	TestSkipped uint64               `json:"test_skipped"`
+	Date        time.Time            `json:"date"`
+	GitBranch   string               `json:"git_branch"`
+}
+
+type ProjectGroup struct {
+	GroupID   uint64           `json:"group_id"`
+	GroupName string           `json:"group_name"`
+	Projects  []ProjectSummary `json:"projects"`
+}
+
+type ProjectGroupResponse struct {
+	Cookie        string         `json:"cookie"`
+	ProjectGroups []ProjectGroup `json:"project_groups"`
 }
 
 func NewHandler(db *gorm.DB) *Handler {
@@ -67,6 +92,8 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 		return // Stop further processing if tag processing fails
 	}
 
+	computeTestRunStatus(&testRun)
+
 	// Save or update the testRun record in the database
 	if err := gdb.Save(&testRun).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error saving record"})
@@ -81,6 +108,24 @@ func getProjectIDByUUID(db *gorm.DB, uuid string) (uint64, error) {
 		return 0, err
 	}
 	return project.ID, nil
+}
+
+func computeTestRunStatus(testRun *models.TestRun) {
+	status := models.StatusPassed
+
+	for _, suite := range testRun.SuiteRuns {
+		for _, spec := range suite.SpecRuns {
+			if strings.EqualFold(spec.Status, "FAILED") {
+				testRun.Status = models.StatusFailed
+				return
+			}
+			if strings.EqualFold(spec.Status, "SKIPPED") {
+				status = models.StatusSkipped
+			}
+		}
+	}
+
+	testRun.Status = status
 }
 
 func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {
@@ -265,6 +310,174 @@ func (h *Handler) GetTestSummary(c *gin.Context) {
 	testSummaries := GetProjectSpecStatistics(h, projectId)
 
 	c.JSON(http.StatusOK, testSummaries)
+}
+
+func (h *Handler) GetProjectGroups(c *gin.Context) {
+	ucookie, _ := c.Cookie(utils.CookieName)
+
+	// 1. Get the user
+	var user models.AppUser
+	if err := h.db.Where("cookie = ?", ucookie).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching user"})
+		}
+		return
+	}
+
+	groupIDStr := c.Query("group_id")
+	branch := c.Query("git_branch")
+
+	// 2. Get preferred projects
+	var preferred []models.PreferredProject
+	query := h.db.Preload("Project").
+		Preload("Group").
+		Where("user_id = ?", user.ID)
+
+	if groupIDStr != "" {
+		if groupID, err := strconv.ParseUint(groupIDStr, 10, 64); err == nil {
+			query = query.Where("group_id = ?", groupID)
+		}
+	}
+
+	err := query.Find(&preferred).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching preferences"})
+		return
+	}
+
+	// 3. Get project summaries (filtering by branch if given)
+	projectSummaryMap, err := h.getProjectSummaryMapping(preferred, branch)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 4. Group by group ID
+	groupMap := make(map[uint64]*ProjectGroup)
+	for _, item := range preferred {
+		if item.Group == nil {
+			continue // skip ungrouped
+		}
+
+		groupID := item.Group.GroupID
+		if _, exists := groupMap[groupID]; !exists {
+			groupMap[groupID] = &ProjectGroup{
+				GroupID:   groupID,
+				GroupName: item.Group.GroupName,
+				Projects:  []ProjectSummary{},
+			}
+		}
+
+		if summary, ok := projectSummaryMap[item.Project.UUID]; ok {
+			groupMap[groupID].Projects = append(groupMap[groupID].Projects, summary)
+		}
+	}
+
+	// 5. Convert map to slice
+	var grouped []ProjectGroup
+	for _, group := range groupMap {
+		grouped = append(grouped, *group)
+	}
+
+	sort.Slice(grouped, func(i, j int) bool {
+		return grouped[i].GroupID < grouped[j].GroupID
+	})
+
+	// 6. Return response
+	response := ProjectGroupResponse{
+		Cookie:        user.Cookie,
+		ProjectGroups: grouped,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *Handler) getProjectSummaryMapping(preferred []models.PreferredProject, branchFilter string) (map[string]ProjectSummary, error) {
+	projectSummaryMap := make(map[string]ProjectSummary)
+
+	for _, pref := range preferred {
+		var latestTestSeed int64
+
+		// Step 1: Fetch only latest test_seed (no full TestRun)
+		query := h.db.Model(&models.TestRun{}).
+			Select("test_seed").
+			Joins("JOIN project_details ON project_details.id = test_runs.project_id").
+			Where("project_details.uuid = ?", pref.Project.UUID)
+
+		if branchFilter != "" {
+			query = query.Where("test_runs.git_branch = ?", branchFilter)
+		}
+
+		err := query.Order("test_seed DESC").
+			Limit(1).
+			Pluck("test_seed", &latestTestSeed).Error
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch latest test_seed for project %s: %w", pref.Project.UUID, err)
+		}
+
+		if latestTestSeed == 0 {
+			continue // No test runs for this project
+		}
+
+		// Step 2: Aggregate test status summary for this test_seed
+		var stats struct {
+			TestPassed  uint64
+			TestSkipped uint64
+			TestFailed  uint64
+			TestCount   uint64
+			GitBranch   string
+		}
+
+		err = h.db.Model(&models.TestRun{}).
+			Select([]string{
+				"SUM(CASE WHEN UPPER(spec_runs.status) = 'PASSED' THEN 1 ELSE 0 END) AS test_passed",
+				"SUM(CASE WHEN UPPER(spec_runs.status) = 'SKIPPED' THEN 1 ELSE 0 END) AS test_skipped",
+				"SUM(CASE WHEN UPPER(spec_runs.status) = 'FAILED' THEN 1 ELSE 0 END) AS test_failed",
+				"COUNT(*) AS test_count",
+				"MAX(test_runs.git_branch) AS git_branch",
+			}).
+			Joins("JOIN suite_runs ON suite_runs.test_run_id = test_runs.id").
+			Joins("JOIN spec_runs ON spec_runs.suite_id = suite_runs.id").
+			Joins("JOIN project_details ON project_details.id = test_runs.project_id").
+			Where("project_details.uuid = ? AND test_runs.test_seed = ?", pref.Project.UUID, latestTestSeed).
+			Scan(&stats).Error
+
+		if err != nil {
+			return nil, fmt.Errorf("aggregation failed for project %s: %w", pref.Project.UUID, err)
+		}
+
+		projectSummary := ProjectSummary{
+			UUID:        pref.Project.UUID,
+			Name:        pref.Project.Name,
+			Date:        time.Unix(latestTestSeed, 0),
+			GitBranch:   stats.GitBranch,
+			TestPassed:  stats.TestPassed,
+			TestSkipped: stats.TestSkipped,
+			TestFailed:  stats.TestFailed,
+			TestCount:   stats.TestCount,
+		}
+
+		projectSummary.Status = computeProjectSummaryStatus(stats.TestFailed, stats.TestSkipped)
+
+		// Step 3: Create project summary entry
+		projectSummaryMap[pref.Project.UUID] = projectSummary
+	}
+
+	return projectSummaryMap, nil
+}
+
+func computeProjectSummaryStatus(failed uint64, skipped uint64) models.TestRunStatus {
+	if failed > 0 {
+		return models.StatusFailed
+	} else if skipped > 0 {
+		return models.StatusSkipped
+	} else {
+		return models.StatusPassed
+	}
 }
 
 func (h *Handler) Ping(c *gin.Context) {
