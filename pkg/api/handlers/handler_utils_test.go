@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"database/sql"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -20,17 +21,24 @@ import (
 	"gorm.io/gorm"
 )
 
-var _ = BeforeEach(func() {
-	db, mock, _ = sqlmock.New()
+var _ = Describe("Insights test", func() {
+	var (
+		db     *sql.DB
+		gormDb *gorm.DB
+		mock   sqlmock.Sqlmock
+	)
 
-	dialector := postgres.New(postgres.Config{
-		DSN:                  "sqlmock_db_0",
-		DriverName:           "postgres",
-		Conn:                 db,
-		PreferSimpleProtocol: true,
+	var _ = BeforeEach(func() {
+		db, mock, _ = sqlmock.New()
+
+		dialector := postgres.New(postgres.Config{
+			DSN:                  "sqlmock_db_0",
+			DriverName:           "postgres",
+			Conn:                 db,
+			PreferSimpleProtocol: true,
+		})
+		gormDb, _ = gorm.Open(dialector, &gorm.Config{})
 	})
-	gormDb, _ = gorm.Open(dialector, &gorm.Config{})
-})
 
 var _ = AfterEach(func() {
 	err := db.Close()
@@ -39,7 +47,6 @@ var _ = AfterEach(func() {
 	}
 })
 
-var _ = Describe("Insights test", func() {
 	Context("When ReportTestInsights is invoked", func() {
 		gin.SetMode(gin.TestMode)
 		router := gin.Default()

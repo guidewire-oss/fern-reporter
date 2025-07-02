@@ -15,7 +15,18 @@ var (
 	testRun *gin.RouterGroup
 )
 
+func NoCacheMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		c.Header("Surrogate-Control", "no-store")
+		c.Next()
+	}
+}
+
 func RegisterRouters(router *gin.Engine) {
+	router.Use(NoCacheMiddleware())
 	handler := handlers.NewHandler(db.GetDb())
 	userHandler := user.NewUserHandler(db.GetDb())
 	projectHandler := project.NewProjectHandler(db.GetDb())

@@ -24,23 +24,24 @@ import (
 	"github.com/guidewire/fern-reporter/pkg/utils"
 )
 
-var (
-	db     *sql.DB
-	gormDb *gorm.DB
-	mock   sqlmock.Sqlmock
-)
+var _ = Describe("Handlers", func() {
+	var (
+		db     *sql.DB
+		gormDb *gorm.DB
+		mock   sqlmock.Sqlmock
+	)
 
-var _ = BeforeEach(func() {
-	db, mock, _ = sqlmock.New()
+	var _ = BeforeEach(func() {
+		db, mock, _ = sqlmock.New()
 
-	dialector := postgres.New(postgres.Config{
-		DSN:                  "sqlmock_db_0",
-		DriverName:           "postgres",
-		Conn:                 db,
-		PreferSimpleProtocol: true,
+		dialector := postgres.New(postgres.Config{
+			DSN:                  "sqlmock_db_0",
+			DriverName:           "postgres",
+			Conn:                 db,
+			PreferSimpleProtocol: true,
+		})
+		gormDb, _ = gorm.Open(dialector, &gorm.Config{})
 	})
-	gormDb, _ = gorm.Open(dialector, &gorm.Config{})
-})
 
 var _ = AfterEach(func() {
 	err := db.Close()
@@ -49,7 +50,6 @@ var _ = AfterEach(func() {
 	}
 })
 
-var _ = Describe("Handlers", func() {
 	Context("when GetTestRunAll handler is invoked", func() {
 		It("should query db to fetch all records", func() {
 			rows := sqlmock.NewRows([]string{"ID", "TestProjectName"}).
