@@ -3,10 +3,12 @@ package routers_test
 import (
 	"database/sql"
 	"fmt"
-	"github.com/guidewire/fern-reporter/pkg/api/handlers/project"
 	"os"
 	"reflect"
 	"runtime"
+
+	"github.com/guidewire/fern-reporter/pkg/api/handlers/project"
+	"github.com/guidewire/fern-reporter/pkg/utils"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
@@ -43,6 +45,7 @@ var _ = Describe("RegisterRouters", func() {
 	_ = AfterEach(func() {
 		err := db.Close()
 		if err != nil {
+			utils.Log.Error("[TEST-ERROR]: Unable to close the db connection: ", err)
 			fmt.Printf("Unable to close the db connection %s", err.Error())
 		}
 	})

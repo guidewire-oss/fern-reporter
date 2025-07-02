@@ -5,7 +5,8 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"log"
+
+	"github.com/guidewire/fern-reporter/pkg/utils"
 
 	"github.com/golang-migrate/migrate/v4"
 	p "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -15,6 +16,7 @@ import (
 	"github.com/markbates/pkger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var gdb *gorm.DB
@@ -34,35 +36,37 @@ func Initialize() {
 
 	pdb, err := sql.Open("postgres", dbUrl)
 	if err != nil {
-		log.Fatalln(err)
+		utils.Log.Fatal("[ERROR]: Unable to connect to the database: ", err)
 	}
 
 	driver, err := p.WithInstance(pdb, &p.Config{})
 	if err != nil {
-		log.Fatalln(err)
+		utils.Log.Fatal("[ERROR]: Unable to create migration driver: ", err)
 	}
 
 	source, err := iofs.New(migrations, "migrations")
 	if err != nil {
-		log.Fatalln(err)
+		utils.Log.Fatal("[ERROR]: Unable to create migration source: ", err)
 	}
 
 	m, err := migrate.NewWithInstance("iofs", source, "postgres", driver)
 	if err != nil {
-		log.Fatalln(err)
+		utils.Log.Fatal("[ERROR]: Unable to create migration instance: ", err)
 	}
 	if err := m.Up(); errors.Is(err, migrate.ErrNoChange) {
-		log.Println(err)
+		utils.Log.Warn("[LOG]: No new migrations to apply")
 	} else if err != nil {
-		log.Fatalln(err)
+		utils.Log.Fatal("[ERROR]: Unable to run database migrations: ", err)
 	}
 
-	gdb, err = gorm.Open(postgres.Open(dbUrl), &gorm.Config{})
+	gdb, err = gorm.Open(postgres.Open(dbUrl), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
-		log.Fatalf("error: %v", err)
+		utils.Log.Fatal("[ERROR]: Unable to connect to the database: ", err)
 	}
 
-	gdb = gdb.Debug()
+	// gdb = gdb.Debug()
 }
 
 func GetDb() *gorm.DB {
@@ -73,6 +77,6 @@ func CloseDb() {
 	sqlDB, _ := gdb.DB()
 	err := sqlDB.Close()
 	if err != nil {
-		log.Fatalf("error closing db: %v", err)
+		utils.Log.Fatal("[ERROR]: Unable to close the db connection: ", err)
 	}
 }

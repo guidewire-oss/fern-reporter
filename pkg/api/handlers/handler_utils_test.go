@@ -1,7 +1,6 @@
 package handlers_test
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -36,7 +35,7 @@ var _ = BeforeEach(func() {
 var _ = AfterEach(func() {
 	err := db.Close()
 	if err != nil {
-		fmt.Printf("Unable to close the db connection %s", err.Error())
+		utils.Log.Error("[TEST-ERROR]: Unable to close the db connection: ", err)
 	}
 })
 
