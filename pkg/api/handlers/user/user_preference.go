@@ -203,6 +203,7 @@ func (h *UserHandler) SaveUserPreference(c *gin.Context) {
 	if err != nil {
 		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
+		return
 	}
 
 	// Save Preference to DB

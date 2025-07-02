@@ -46,7 +46,6 @@ var _ = Describe("RegisterRouters", func() {
 		err := db.Close()
 		if err != nil {
 			utils.Log.Error("[TEST-ERROR]: Unable to close the db connection: ", err)
-			fmt.Printf("Unable to close the db connection %s", err.Error())
 		}
 	})
 
