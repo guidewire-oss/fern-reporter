@@ -105,3 +105,12 @@ type AppUser struct {
 	CreatedAt time.Time `gorm:"autoCreateTime"` // set once when created
 	UpdatedAt time.Time `gorm:"autoUpdateTime"` // updated automatically on update
 }
+
+type TestQueryFilter struct {
+	ProjectID string
+	GitBranch string
+	GitSha    string
+	StartTime *time.Time
+	EndTime   *time.Time
+	Tags      []string
+}
