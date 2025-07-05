@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"database/sql"
-	"fmt"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -41,12 +40,12 @@ var _ = Describe("Insights test", func() {
 		gormDb, _ = gorm.Open(dialector, &gorm.Config{})
 	})
 
-	var _ = AfterEach(func() {
-		err := db.Close()
-		if err != nil {
-			fmt.Printf("Unable to close the db connection %s", err.Error())
-		}
-	})
+var _ = AfterEach(func() {
+	err := db.Close()
+	if err != nil {
+		utils.Log.Error("[TEST-ERROR]: Unable to close the db connection: ", err)
+	}
+})
 
 	Context("When ReportTestInsights is invoked", func() {
 		gin.SetMode(gin.TestMode)

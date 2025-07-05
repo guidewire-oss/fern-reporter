@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers/project"
 	"github.com/guidewire/fern-reporter/pkg/models"
+	"github.com/guidewire/fern-reporter/pkg/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gorm.io/driver/postgres"
@@ -44,7 +44,7 @@ var _ = AfterEach(func() {
 	mock.ExpectClose()
 	err := db.Close()
 	if err != nil {
-		fmt.Printf("Unable to close the db connection %s", err.Error())
+		utils.Log.Error("[TEST-ERROR]: Unable to close the db connection: ", err)
 	}
 })
 
@@ -85,7 +85,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE name = $1 ORDER BY "project_details"."id" LIMIT $2`)).
@@ -126,7 +126,7 @@ var _ = Describe("Project Handlers", func() {
 		It("with duplicate project name, it should return error", func() {
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 			projectRows := sqlmock.NewRows([]string{"id", "uuid", "name", "team_name", "comment"}).
@@ -170,7 +170,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 
@@ -215,7 +215,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 
@@ -248,7 +248,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 
@@ -284,7 +284,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 
