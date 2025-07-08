@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/guidewire/fern-reporter/pkg/utils"
 )
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 
 	// Use select to wait for either a signal or a timeout
 	<-sigs // Wait for a shutdown signal (CTRL+C)
-	fmt.Println("Received shutdown signal, stopping gRPC server...")
+	utils.GetLogger().Info("[gRPC-LOG]: Received shutdown signal, stopping gRPC server...")
 	cancel() // Cancel the context to gracefully stop the server
 
 }

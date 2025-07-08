@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"database/sql"
-	"fmt"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -44,7 +43,7 @@ var _ = Describe("Insights test", func() {
 	var _ = AfterEach(func() {
 		err := db.Close()
 		if err != nil {
-			fmt.Printf("Unable to close the db connection %s", err.Error())
+			utils.GetLogger().Error("[TEST-ERROR]: Unable to close the db connection: ", err)
 		}
 	})
 
