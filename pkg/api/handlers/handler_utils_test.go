@@ -40,12 +40,12 @@ var _ = Describe("Insights test", func() {
 		gormDb, _ = gorm.Open(dialector, &gorm.Config{})
 	})
 
-var _ = AfterEach(func() {
-	err := db.Close()
-	if err != nil {
-		utils.Log.Error("[TEST-ERROR]: Unable to close the db connection: ", err)
-	}
-})
+	var _ = AfterEach(func() {
+		err := db.Close()
+		if err != nil {
+			utils.GetLogger().Error("[TEST-ERROR]: Unable to close the db connection: ", err)
+		}
+	})
 
 	Context("When ReportTestInsights is invoked", func() {
 		gin.SetMode(gin.TestMode)

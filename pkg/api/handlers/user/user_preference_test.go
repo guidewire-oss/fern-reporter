@@ -5,6 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers/user"
@@ -14,9 +18,6 @@ import (
 	. "github.com/onsi/gomega"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"net/http"
-	"net/http/httptest"
-	"regexp"
 )
 
 var (
@@ -44,7 +45,7 @@ var _ = AfterEach(func() {
 	mock.ExpectClose()
 	err := db.Close()
 	if err != nil {
-		utils.Log.Error("[TEST-ERROR]: Unable to close the db connection: ", err)
+		utils.GetLogger().Error("[TEST-ERROR]: Unable to close the db connection: ", err)
 	}
 })
 
@@ -61,7 +62,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("and save the favorite project, it should create one and return 201 OK", func() {
 			reqBody, err := json.Marshal(favRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
 				return
 			}
 
@@ -111,7 +112,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("for same favorite project, it should not create one and return 201 OK", func() {
 			reqBody, err := json.Marshal(favRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
 				return
 			}
 
@@ -155,7 +156,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("for invalid project, it should return Project ID not found (404)", func() {
 			reqBody, err := json.Marshal(favRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
 				return
 			}
 			user_rows := sqlmock.NewRows([]string{"ID", "Cookie"}).
@@ -194,7 +195,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("and delete the favorite project, it should delete and return 200 OK", func() {
 			reqBody, err := json.Marshal("")
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
 				return
 			}
 
@@ -243,7 +244,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("for invalid project, it should return Project ID not found (404)", func() {
 			reqBody, err := json.Marshal("")
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
 				return
 			}
 
@@ -394,7 +395,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("and save the user preference, it should save and return 202 OK", func() {
 			reqBody, err := json.Marshal(userPrefRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal user preference request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal user preference request", err)
 				return
 			}
 
@@ -438,7 +439,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("will return user preference details", func() {
 			reqBody, err := json.Marshal("")
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal user preference request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal user preference request", err)
 				return
 			}
 
@@ -494,7 +495,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("with a new group and project, it should create one and return 201 OK", func() {
 			reqBody, err := json.Marshal(prefRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
 				return
 			}
 
@@ -570,7 +571,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 
 			reqBody, err := json.Marshal(prefRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal favourite project request", err)
 				return
 			}
 
@@ -637,7 +638,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("will return preferred project details", func() {
 			reqBody, err := json.Marshal("")
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal user preference request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal user preference request", err)
 				return
 			}
 
@@ -701,7 +702,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("for empty preferred project details, will return empty object", func() {
 			reqBody, err := json.Marshal("")
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal user preference request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal user preference request", err)
 				return
 			}
 
@@ -765,7 +766,7 @@ var _ = Describe("User Preference Handlers", Ordered, func() {
 		It("will delete preferred project", func() {
 			reqBody, err := json.Marshal(delPrefRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Failed to Marshal delete preferred project request", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Failed to Marshal delete preferred project request", err)
 				return
 			}
 

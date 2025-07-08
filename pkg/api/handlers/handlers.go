@@ -31,14 +31,14 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 	path := c.FullPath()
 
 	if err := c.ShouldBindJSON(&testRun); err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s: %s", method, path, err.Error()))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s: %s", method, path, err.Error()))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return // Stop further processing if there is a binding error
 	}
 
 	// Validate that UUID is provided
 	if testRun.TestProjectID == "" {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Missing TestProjectID for %s at %s", method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Missing TestProjectID for %s at %s", method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Project UUID is required"})
 		return
 	}
@@ -50,7 +50,7 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 	projectID, err := getProjectIDByUUID(h.db, testRun.TestProjectID)
 
 	if err != nil || projectID == 0 {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Project ID %s not found for %s at %s", testRun.TestProjectID, method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Project ID %s not found for %s at %s", testRun.TestProjectID, method, path))
 		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Project ID %s not found", testRun.TestProjectID)})
 		return
 	}
@@ -59,7 +59,7 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 	// If it's not a new record, try to find it first
 	if !isNewRecord {
 		if err := gdb.Where("id = ?", testRun.ID).First(&models.TestRun{}).Error; err != nil {
-			utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: TestRun with ID %d not found for %s at %s", testRun.ID, method, path))
+			utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: TestRun with ID %d not found for %s at %s", testRun.ID, method, path))
 			c.JSON(http.StatusNotFound, gin.H{"error": "record not found"})
 			return // Stop further processing if record not found
 		}
@@ -68,19 +68,19 @@ func (h *Handler) CreateTestRun(c *gin.Context) {
 	// Process tags
 	err = ProcessTags(gdb, &testRun)
 	if err != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error processing tags for TestRun ID %d: ", testRun.ID), err)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error processing tags for TestRun ID %d: ", testRun.ID), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error processing tags"})
 		return // Stop further processing if tag processing fails
 	}
 
 	// Save or update the testRun record in the database
 	if err := gdb.Save(&testRun).Error; err != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error saving TestRun ID %d: ", testRun.ID), err)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error saving TestRun ID %d: ", testRun.ID), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error saving record"})
 		return // Stop further processing if save fails
 	}
 
-	utils.Log.Info(fmt.Sprintf("[REQUEST-SUCCESS]: TestRun %d created successfully", testRun.ID))
+	utils.GetLogger().Info(fmt.Sprintf("[REQUEST-SUCCESS]: TestRun %d created successfully", testRun.ID))
 	c.JSON(http.StatusCreated, &testRun)
 }
 
@@ -148,7 +148,7 @@ func (h *Handler) UpdateTestRun(c *gin.Context) {
 	}
 	err := c.BindJSON(&testRun)
 	if err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for TestRun ID %s: %s", id, err.Error()))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for TestRun ID %s: %s", id, err.Error()))
 	}
 
 	db.Save(&testRun)
@@ -162,7 +162,7 @@ func (h *Handler) DeleteTestRun(c *gin.Context) {
 
 	id := c.Param("id")
 	if testRunID, err := strconv.Atoi(id); err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid TestRunID %s for %s at %s: %s", id, method, path, err.Error()))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid TestRunID %s for %s at %s: %s", id, method, path, err.Error()))
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	} else {
@@ -172,17 +172,17 @@ func (h *Handler) DeleteTestRun(c *gin.Context) {
 	result := h.db.Delete(&testRun)
 	if result.Error != nil {
 		// If there was an error during the delete operation
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error deleting TestRun ID %d for %s at %s", testRun.ID, method, path), result.Error)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error deleting TestRun ID %d for %s at %s", testRun.ID, method, path), result.Error)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error deleting test run"})
 		return
 	} else if result.RowsAffected == 0 {
 		// If no rows were affected, it means no record was found with the provided ID
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: TestRun with ID %d not found for %s at %s", testRun.ID, method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: TestRun with ID %d not found for %s at %s", testRun.ID, method, path))
 		c.JSON(http.StatusNotFound, gin.H{"error": "test run not found"})
 		return
 	}
 
-	utils.Log.Info(fmt.Sprintf("[REQUEST-SUCCESS]: TestRun %d deleted successfully for %s at %s", testRun.ID, method, path))
+	utils.GetLogger().Info(fmt.Sprintf("[REQUEST-SUCCESS]: TestRun %d deleted successfully for %s at %s", testRun.ID, method, path))
 	c.JSON(http.StatusOK, &testRun)
 }
 
@@ -250,12 +250,12 @@ func (h *Handler) ReportTestInsights(c *gin.Context) {
 
 	startTime, err := ParseTimeFromStringWithDefault(startTimeInput, time.Now().AddDate(-1, 0, 0))
 	if err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid startTime parameter for %s at %s", method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid startTime parameter for %s at %s", method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid startTime parameter: %v", err)})
 	}
 	endTime, err := ParseTimeFromStringWithDefault(endTimeInput, time.Now())
 	if err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid endTime parameter for %s at %s", method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid endTime parameter for %s at %s", method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid endTimeInput parameter: %v", err)})
 	}
 
@@ -288,7 +288,7 @@ func (h *Handler) GetTestSummary(c *gin.Context) {
 }
 
 func (h *Handler) Ping(c *gin.Context) {
-	utils.Log.Info("[PING]: Fern Reporter is running!")
+	utils.GetLogger().Info("[PING]: Fern Reporter is running!")
 	c.JSON(200, gin.H{
 		"message": "Fern Reporter is running!",
 	})

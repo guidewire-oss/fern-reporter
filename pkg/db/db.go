@@ -36,34 +36,34 @@ func Initialize() {
 
 	pdb, err := sql.Open("postgres", dbUrl)
 	if err != nil {
-		utils.Log.Fatal("[ERROR]: Unable to connect to the database: ", err)
+		utils.GetLogger().Fatal("[ERROR]: Unable to connect to the database: ", err)
 	}
 
 	driver, err := p.WithInstance(pdb, &p.Config{})
 	if err != nil {
-		utils.Log.Fatal("[ERROR]: Unable to create migration driver: ", err)
+		utils.GetLogger().Fatal("[ERROR]: Unable to create migration driver: ", err)
 	}
 
 	source, err := iofs.New(migrations, "migrations")
 	if err != nil {
-		utils.Log.Fatal("[ERROR]: Unable to create migration source: ", err)
+		utils.GetLogger().Fatal("[ERROR]: Unable to create migration source: ", err)
 	}
 
 	m, err := migrate.NewWithInstance("iofs", source, "postgres", driver)
 	if err != nil {
-		utils.Log.Fatal("[ERROR]: Unable to create migration instance: ", err)
+		utils.GetLogger().Fatal("[ERROR]: Unable to create migration instance: ", err)
 	}
 	if err := m.Up(); errors.Is(err, migrate.ErrNoChange) {
-		utils.Log.Warn("[LOG]: No new migrations to apply")
+		utils.GetLogger().Warn("[LOG]: No new migrations to apply")
 	} else if err != nil {
-		utils.Log.Fatal("[ERROR]: Unable to run database migrations: ", err)
+		utils.GetLogger().Fatal("[ERROR]: Unable to run database migrations: ", err)
 	}
 
 	gdb, err = gorm.Open(postgres.Open(dbUrl), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		utils.Log.Fatal("[ERROR]: Unable to connect to the database: ", err)
+		utils.GetLogger().Fatal("[ERROR]: Unable to connect to the database: ", err)
 	}
 
 	// gdb = gdb.Debug()
@@ -77,6 +77,6 @@ func CloseDb() {
 	sqlDB, _ := gdb.DB()
 	err := sqlDB.Close()
 	if err != nil {
-		utils.Log.Fatal("[ERROR]: Unable to close the db connection: ", err)
+		utils.GetLogger().Fatal("[ERROR]: Unable to close the db connection: ", err)
 	}
 }

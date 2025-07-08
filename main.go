@@ -51,19 +51,19 @@ func initConfig() {
 
 func initDb() {
 	db.Initialize()
-	utils.Log.Info("[LOG]: Database initialized successfully")
+	utils.GetLogger().Info("[LOG]: Database initialized successfully")
 }
 
 func initLogger() {
-	utils.Log = utils.NewLoggerService()
-	utils.Log.Info("[LOG]: Logging Service Configured Successfully")
+	utils.InitLoggerOnce()
+	utils.GetLogger().Info("[LOG]: Logging Service Configured Successfully")
 }
 
 func initServer() {
 	serverConfig := config.GetServer()
 	gin.SetMode(gin.ReleaseMode) // Set Gin mode to ReleaseMode to suppress debug logs
 	router := gin.New()
-	// router.Use(gin.Recovery())
+	router.Use(gin.Recovery())
 
 	// Add cookie middleware BEFORE routes
 	router.Use(SetMiddlewareCookie())
@@ -72,7 +72,7 @@ func initServer() {
 		checkAuthConfig()
 		configJWTMiddleware(router)
 	} else {
-		utils.Log.Info("[LOG]: Authentication is disabled, JWT Middleware not configured")
+		utils.GetLogger().Info("[LOG]: Authentication is disabled, JWT Middleware not configured")
 	}
 
 	router.Use(cors.New(cors.Config{
@@ -90,7 +90,7 @@ func initServer() {
 
 	templ, err := template.New("").Funcs(funcMap).ParseFS(testRunsTemplate, "pkg/views/test_runs.html", "pkg/views/insights.html")
 	if err != nil {
-		utils.Log.Fatal("[ERROR]: Unable to parse HTML templates: ", err)
+		utils.GetLogger().Fatal("[ERROR]: Unable to parse HTML templates: ", err)
 	}
 	router.SetHTMLTemplate(templ)
 
@@ -101,9 +101,9 @@ func initServer() {
 	router.GET("/", PlaygroundHandler("/query"))
 	err = router.Run(serverConfig.Port)
 	if err != nil {
-		utils.Log.Fatal("[ERROR]: Unable to start the server: ", err)
+		utils.GetLogger().Fatal("[ERROR]: Unable to start the server: ", err)
 	}
-	utils.Log.Info(fmt.Sprintf("[LOG]: Server started successfully on port %s", serverConfig.Port))
+	utils.GetLogger().Info(fmt.Sprintf("[LOG]: Server started successfully on port %s", serverConfig.Port))
 }
 
 func PlaygroundHandler(path string) gin.HandlerFunc {
@@ -124,10 +124,10 @@ func GraphqlHandler(gormdb *gorm.DB) gin.HandlerFunc {
 
 func checkAuthConfig() {
 	if config.GetAuth().ScopeClaimName == "" {
-		utils.Log.Fatal("[ERROR]: Set SCOPE_CLAIM_NAME environment variable or add a default value in config.yaml", nil)
+		utils.GetLogger().Fatal("[ERROR]: Set SCOPE_CLAIM_NAME environment variable or add a default value in config.yaml", nil)
 	}
 	if config.GetAuth().JSONWebKeysEndpoint == "" {
-		utils.Log.Fatal("[ERROR]: Set AUTH_JSON_WEB_KEYS_ENDPOINT environment variable or add a default value in config.yaml", nil)
+		utils.GetLogger().Fatal("[ERROR]: Set AUTH_JSON_WEB_KEYS_ENDPOINT environment variable or add a default value in config.yaml", nil)
 	}
 }
 
@@ -137,13 +137,13 @@ func configJWTMiddleware(router *gin.Engine) {
 
 	keyFetcher, err := auth.NewDefaultJWKSFetcher(ctx, authConfig.JSONWebKeysEndpoint)
 	if err != nil {
-		utils.Log.Fatal("[ERROR]: Failed to create JWKS fetcher", err)
+		utils.GetLogger().Fatal("[ERROR]: Failed to create JWKS fetcher", err)
 	}
 
 	jwtValidator := &auth.DefaultJWTValidator{}
 
 	router.Use(auth.JWTMiddleware(authConfig.JSONWebKeysEndpoint, keyFetcher, jwtValidator))
-	utils.Log.Info("[LOG]: JWT Middleware configured successfully")
+	utils.GetLogger().Info("[LOG]: JWT Middleware configured successfully")
 }
 
 func isAllowedOrigin(origin string) bool {

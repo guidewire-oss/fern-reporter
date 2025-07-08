@@ -36,14 +36,14 @@ type DefaultJWKSFetcher struct {
 func NewDefaultJWKSFetcher(ctx context.Context, jwksUrl string) (*DefaultJWKSFetcher, error) {
 	cache := jwk.NewCache(ctx)
 	if err := cache.Register(jwksUrl, jwk.WithMinRefreshInterval(12*time.Hour)); err != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error registering JWKS URL %s", jwksUrl), err)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error registering JWKS URL %s", jwksUrl), err)
 		return nil, err
 	}
 	if _, err := cache.Refresh(ctx, jwksUrl); err != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error refreshing JWKS cache for URL %s", jwksUrl), err)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error refreshing JWKS cache for URL %s", jwksUrl), err)
 		return nil, err
 	}
-	utils.Log.Info(fmt.Sprintf("[LOG]: JWKS cache initialized and refreshed for URL: %s", jwksUrl))
+	utils.GetLogger().Info(fmt.Sprintf("[LOG]: JWKS cache initialized and refreshed for URL: %s", jwksUrl))
 	return &DefaultJWKSFetcher{cache: cache}, nil
 }
 
@@ -81,28 +81,28 @@ func JWTMiddleware(jwksUrl string, fetcher JWKSFetcher, validator JWTValidator) 
 		ctx := c.Request.Context()
 		set, err := fetcher.FetchKeys(ctx, jwksUrl)
 		if err != nil {
-			utils.Log.Error(fmt.Sprintf("[ERROR]: Failed to get JWKS for URL %s", jwksUrl), err)
+			utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to get JWKS for URL %s", jwksUrl), err)
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to get JWKS"})
 			return
 		}
 
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			utils.Log.Warn("[REQUEST-ERROR]: Authorization header is missing")
+			utils.GetLogger().Warn("[REQUEST-ERROR]: Authorization header is missing")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header missing"})
 			return
 		}
 
 		authHeaderParts := strings.SplitN(authHeader, " ", 2)
 		if len(authHeaderParts) != 2 || authHeaderParts[0] != "Bearer" {
-			utils.Log.Warn("[REQUEST-ERROR]: Authorization header format is invalid")
+			utils.GetLogger().Warn("[REQUEST-ERROR]: Authorization header format is invalid")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header format must be Bearer {token}"})
 			return
 		}
 
 		token, err := validator.ParseAndValidateToken(ctx, authHeaderParts[1], set)
 		if err != nil {
-			utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Failed to parse or validate token: %s", err.Error()))
+			utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Failed to parse or validate token: %s", err.Error()))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
 		}
@@ -110,7 +110,7 @@ func JWTMiddleware(jwksUrl string, fetcher JWKSFetcher, validator JWTValidator) 
 		authConfig := config.GetAuth()
 		scope, ok := token.PrivateClaims()[authConfig.ScopeClaimName].([]interface{})
 		if !ok || len(scope) == 0 {
-			utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Scope claim is missing or empty for token: %s", authHeaderParts[1]))
+			utils.GetLogger().Warn("[REQUEST-ERROR]: Scope claim is missing or empty")
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "scope claim is missing or empty"})
 			return
 		}
@@ -133,14 +133,14 @@ func ScopeMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		scope, ok := c.Get("scope")
 		if !ok {
-			utils.Log.Warn("[REQUEST-ERROR]: Scope not found in context")
+			utils.GetLogger().Warn("[REQUEST-ERROR]: Scope not found in context")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unable to retrieve scope"})
 			return
 		}
 
 		requiredPermission, ok := permissions[c.Request.Method]
 		if !ok {
-			utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid method %s for scope check", c.Request.Method))
+			utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid method %s for scope check", c.Request.Method))
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid method"})
 			return
 		}
@@ -148,21 +148,21 @@ func ScopeMiddleware() gin.HandlerFunc {
 		scopes := convertToStringSlice(scope.([]interface{}))
 
 		if !slices.Contains(scopes, requiredPermission) || !containsSubstring(scopes, FP) {
-			utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Request with insufficient scope for method %s", c.Request.Method))
+			utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Request with insufficient scope for method %s", c.Request.Method))
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient scope"})
 			return
 		}
 
 		bodyBytes, err := readRequestBody(c)
 		if err != nil {
-			utils.Log.Error("[ERROR]: Unable to read request body", err)
+			utils.GetLogger().Error("[ERROR]: Unable to read request body", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Unable to read request body"})
 			return
 		}
 
 		var requestBody RequestBody
 		if err := c.BindJSON(&requestBody); err != nil {
-			utils.Log.Warn("[REQUEST-ERROR]: Invalid JSON payload in request body")
+			utils.GetLogger().Warn("[REQUEST-ERROR]: Invalid JSON payload in request body")
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
 			return
 		}
@@ -171,7 +171,7 @@ func ScopeMiddleware() gin.HandlerFunc {
 
 		fernProjectName, err := validateProjectName(scopes, requestBody.Project)
 		if err != nil {
-			utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Project name validation failed: %s", err.Error()))
+			utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Project name validation failed: %s", err.Error()))
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": err.Error()})
 			return
 		}

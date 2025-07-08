@@ -3,12 +3,16 @@ package utils
 import (
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
 )
 
-var Log *LoggerService
+var (
+	log         *LoggerService
+	initOnce    sync.Once
+)
 
 type Logger interface {
 	Info(msg string)
@@ -28,6 +32,20 @@ func NewLoggerService() *LoggerService {
 	return &LoggerService{
 		log: logger,
 	}
+}
+
+func InitLoggerOnce() {
+	initOnce.Do(func() {
+		log = NewLoggerService()
+		log.Info("[LOG]: Logger initialized successfully")
+	})
+}
+
+func GetLogger() *LoggerService {
+	if log == nil {
+		InitLoggerOnce()
+	}
+	return log
 }
 
 func (l *LoggerService) Info(msg string) {

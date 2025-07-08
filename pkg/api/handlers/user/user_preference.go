@@ -67,7 +67,7 @@ func (h *UserHandler) SaveFavouriteProject(c *gin.Context) {
 	path := c.FullPath()
 
 	if err := c.ShouldBindJSON(&favouriteRequest); err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s", method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s", method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return // Stop further processing if there is a binding error
 	}
@@ -75,14 +75,14 @@ func (h *UserHandler) SaveFavouriteProject(c *gin.Context) {
 	// Check if user exists
 	user, err := GetUserObject(h, ucookie)
 	if err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID not found for %s at %s", method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID not found for %s at %s", method, path))
 		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
 		return
 	}
 
 	var project models.ProjectDetails
 	if err := h.db.Where("uuid = ?", favouriteRequest.Favourite).First(&project).Error; err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Project ID %s not found for %s at %s", favouriteRequest.Favourite, method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Project ID %s not found for %s at %s", favouriteRequest.Favourite, method, path))
 		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Project id %s not found", favouriteRequest.Favourite)})
 		return
 	}
@@ -90,7 +90,7 @@ func (h *UserHandler) SaveFavouriteProject(c *gin.Context) {
 	// check if favourite entry exists for the user
 	var count int64 = 1
 	if err := h.db.Table("preferred_projects").Where("user_id = ? and project_id = ?", user.ID, project.ID).Count(&count).Error; err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Favourite project %s already configured for the user for %s at %s", favouriteRequest.Favourite, method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Favourite project %s already configured for the user for %s at %s", favouriteRequest.Favourite, method, path))
 		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("favourite project %s already configured for the user", favouriteRequest.Favourite)})
 		return
 	}
@@ -106,11 +106,11 @@ func (h *UserHandler) SaveFavouriteProject(c *gin.Context) {
 
 		// Save favourite project to DB
 		if err := h.db.Omit("User", "Project").Save(&userPreferredProject).Error; err != nil {
-			utils.Log.Error(fmt.Sprintf("[ERROR]: Error saving favourite project %s for the user %s: ", favouriteRequest.Favourite, ucookie), err)
+			utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error saving favourite project %s for the user %d: ", favouriteRequest.Favourite, user.ID), err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error saving record or favourite already saved"})
 			return
 		}
-		utils.Log.Info(fmt.Sprintf("[REQUEST-SUCCESS]: Saved favourite project %s for the user %s at %s", project.UUID, ucookie, path))
+		utils.GetLogger().Info(fmt.Sprintf("[REQUEST-SUCCESS]: Saved favourite project %s for the user %s at %s", project.UUID, ucookie, path))
 	}
 	c.JSON(http.StatusCreated, gin.H{
 		"status": "success",
@@ -127,14 +127,14 @@ func (h *UserHandler) DeleteFavouriteProject(c *gin.Context) {
 	// Check if user exists
 	user, err := GetUserObject(h, ucookie)
 	if err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID not found for %s at %s", method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID not found for %s at %s", method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
 		return
 	}
 
 	var project models.ProjectDetails
 	if err := h.db.Where("uuid = ?", projectUUID).First(&project).Error; err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Project %s not found for %s at %s", projectUUID, method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Project %s not found for %s at %s", projectUUID, method, path))
 		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Project %s not found", projectUUID)})
 		return
 	}
@@ -147,11 +147,11 @@ func (h *UserHandler) DeleteFavouriteProject(c *gin.Context) {
 
 	// Delete favourite from DB
 	if err := h.db.Where("user_id = ? and project_id = ?", user.ID, project.ID).Delete(&userPreferredProject).Error; err != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error deleting favourite project %s for the user %s: ", project.UUID, ucookie), err)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error deleting favourite project %s for the user %d: ", project.UUID, user.ID), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting project"})
 		return
 	}
-	utils.Log.Info(fmt.Sprintf("[REQUEST-SUCCESS]: Favourite Project %s deleted successfully for the user %s at %s", project.UUID, ucookie, path))
+	utils.GetLogger().Info(fmt.Sprintf("[REQUEST-SUCCESS]: Favourite Project %s deleted successfully for the user %d at %s", project.UUID, user.ID, path))
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Favourite Project %s deleted successfully", project.UUID)})
 }
 
@@ -163,7 +163,7 @@ func (h *UserHandler) GetFavouriteProject(c *gin.Context) {
 
 	user, err := GetUserObject(h, ucookie)
 	if err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
 		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
 		return
 	}
@@ -176,12 +176,12 @@ func (h *UserHandler) GetFavouriteProject(c *gin.Context) {
 		Pluck("project_details.uuid", &uuids).Error
 
 	if err != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error fetching favourite project uuids for user %s at %s", ucookie, path), err)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error fetching favourite project uuids for user %d at %s", user.ID, path), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching favourite project uuids"})
 		return
 	}
 
-	utils.Log.Info(fmt.Sprintf("[REQUEST-SUCCESS]: Fetched favourite project uuids for user %s at %s", ucookie, path))
+	utils.GetLogger().Info(fmt.Sprintf("[REQUEST-SUCCESS]: Fetched favourite project uuids for user %d at %s", user.ID, path))
 	c.JSON(http.StatusOK, uuids)
 }
 
@@ -193,7 +193,7 @@ func (h *UserHandler) SaveUserPreference(c *gin.Context) {
 	path := c.FullPath()
 
 	if err := c.ShouldBindJSON(&preference); err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s", method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s", method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return // Stop further processing if there is a binding error
 	}
@@ -201,7 +201,7 @@ func (h *UserHandler) SaveUserPreference(c *gin.Context) {
 	// Check if user exists
 	_, err := GetUserObject(h, ucookie)
 	if err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
 		return
 	}
@@ -215,19 +215,19 @@ func (h *UserHandler) SaveUserPreference(c *gin.Context) {
 		})
 
 	if result.Error != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error updating user preference for cookie %s: ", ucookie), result.Error)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error updating user preference for cookie %s: ", ucookie), result.Error)
 		c.JSON(http.StatusNotFound, gin.H{"error": "error updating preference"})
 		return
 	}
 
 	// If no rows were affected, the cookie didn't exist — optionally create
 	if result.RowsAffected == 0 {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Not updated, user record not exists for the cookie %s", ucookie), nil)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Not updated, user record not exists for the cookie %s", ucookie), nil)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Not updated, user record not exists"})
 		return
 	}
 
-	utils.Log.Info(fmt.Sprintf("[REQUEST-SUCCESS]: User preference updated for the cookie %s", ucookie))
+	utils.GetLogger().Info(fmt.Sprintf("[REQUEST-SUCCESS]: User preference updated for the cookie %s", ucookie))
 	c.JSON(http.StatusAccepted, gin.H{
 		"status": "success",
 	})
@@ -242,7 +242,7 @@ func (h *UserHandler) GetUserPreference(c *gin.Context) {
 	path := c.FullPath()
 
 	if err := h.db.Where("cookie = ?", ucookie).First(&user).Error; err != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error fetching User for cookie %s for %s at %s", ucookie, method, path), err)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error fetching User for cookie %s for %s at %s", ucookie, method, path), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching User"})
 		return
 	}
@@ -256,7 +256,7 @@ func (h *UserHandler) SavePreferredProject(c *gin.Context) {
 	path := c.FullPath()
 
 	if err := c.ShouldBindJSON(&preferredRequest); err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s", method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s", method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -282,7 +282,7 @@ func (h *UserHandler) SavePreferredProject(c *gin.Context) {
 	// 1. Find the user
 	user, err := GetUserObject(h, ucookie)
 	if err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("User ID not found: %v", err)})
 		return
 	}
@@ -295,7 +295,7 @@ func (h *UserHandler) SavePreferredProject(c *gin.Context) {
 		if err := tx.Where("user_id = ? AND group_id IN ?", user.ID, groupIDs).
 			Delete(&models.PreferredProject{}).Error; err != nil {
 			tx.Rollback()
-			utils.Log.Error(fmt.Sprintf("[ERROR]: Failed to clear preferences for user %s for %s at %s: ", user.Cookie, method, path), err)
+			utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to clear preferences for user %s for %s at %s: ", user.Cookie, method, path), err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear preferences"})
 			return
 		}
@@ -318,13 +318,13 @@ func (h *UserHandler) SavePreferredProject(c *gin.Context) {
 			}
 			if err := tx.Create(&groupModel).Error; err != nil {
 				tx.Rollback()
-				utils.Log.Error(fmt.Sprintf("[ERROR]: Failed to create group '%s' for user %s for %s at %s: ", group.GroupName, user.Cookie, method, path), err)
+				utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to create group '%s' for user %s for %s at %s: ", group.GroupName, user.Cookie, method, path), err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create group '%s' ", err)})
 				return
 			}
 		} else if err != nil {
 			tx.Rollback()
-			utils.Log.Error(fmt.Sprintf("[ERROR]: Failed to fetch group for user %s for %s at %s: ", user.Cookie, method, path), err)
+			utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to fetch group for user %s for %s at %s: ", user.Cookie, method, path), err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch group"})
 			return
 		}
@@ -348,7 +348,7 @@ func (h *UserHandler) SavePreferredProject(c *gin.Context) {
 	if len(preferredEntries) > 0 {
 		if err := tx.Create(&preferredEntries).Error; err != nil {
 			tx.Rollback()
-			utils.Log.Error(fmt.Sprintf("[ERROR]: Failed to save preferred entries for user %s for %s at %s: ", user.Cookie, method, path), err)
+			utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to save preferred entries for user %s for %s at %s: ", user.Cookie, method, path), err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save preferred entries"})
 			return
 		}
@@ -356,12 +356,12 @@ func (h *UserHandler) SavePreferredProject(c *gin.Context) {
 
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Failed to commit transaction for user %s for %s at %s: ", user.Cookie, method, path), err)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to commit transaction for user %s for %s at %s: ", user.Cookie, method, path), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit transaction"})
 		return
 	}
 
-	utils.Log.Info(fmt.Sprintf("[REQUEST-SUCCESS]: User %s preferences saved successfully for %s at %s", user.Cookie, method, path))
+	utils.GetLogger().Info(fmt.Sprintf("[REQUEST-SUCCESS]: User %s preferences saved successfully for %s at %s", user.Cookie, method, path))
 	c.JSON(http.StatusCreated, gin.H{"status": "success"})
 }
 
@@ -375,10 +375,10 @@ func (h *UserHandler) GetPreferredProject(c *gin.Context) {
 	var user models.AppUser
 	if err := h.db.Where("cookie = ?", ucookie).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
+			utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
 			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		} else {
-			utils.Log.Error(fmt.Sprintf("[ERROR]: Error fetching user for cookie %s for %s at %s: ", ucookie, method, path), err)
+			utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error fetching user for cookie %s for %s at %s: ", ucookie, method, path), err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching user"})
 		}
 		return
@@ -391,7 +391,7 @@ func (h *UserHandler) GetPreferredProject(c *gin.Context) {
 		Where("user_id = ?", user.ID).
 		Find(&preferred).Error
 	if err != nil {
-		utils.Log.Error(fmt.Sprintf("[ERROR]: Error fetching preferences for user %d for %s at %s: ", user.ID, method, path), err)
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Error fetching preferences for user %d for %s at %s: ", user.ID, method, path), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching preferences"})
 		return
 	}
@@ -441,7 +441,7 @@ func (h *UserHandler) DeletePreferredProject(c *gin.Context) {
 	path := c.FullPath()
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s", method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid JSON payload for %s at %s", method, path))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
@@ -449,7 +449,7 @@ func (h *UserHandler) DeletePreferredProject(c *gin.Context) {
 	// Find user by cookie
 	var user models.AppUser
 	if err := h.db.Where("cookie = ?", ucookie).First(&user).Error; err != nil {
-		utils.Log.Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: User ID %s not found for %s at %s", ucookie, method, path))
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
@@ -469,7 +469,7 @@ func (h *UserHandler) DeletePreferredProject(c *gin.Context) {
 		if err := tx.Where("user_id = ? AND group_id IN ?", user.ID, groupIDs).
 			Delete(&models.PreferredProject{}).Error; err != nil {
 			tx.Rollback()
-			utils.Log.Error(fmt.Sprintf("[ERROR]: Failed to delete preferred projects for user %d for %s at %s: ", user.ID, method, path), err)
+			utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to delete preferred projects for user %d for %s at %s: ", user.ID, method, path), err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete preferred projects"})
 			return
 		}
@@ -478,19 +478,19 @@ func (h *UserHandler) DeletePreferredProject(c *gin.Context) {
 		if err := tx.Where("user_id = ? AND group_id IN ?", user.ID, groupIDs).
 			Delete(&models.ProjectGroup{}).Error; err != nil {
 			tx.Rollback()
-			utils.Log.Error(fmt.Sprintf("[ERROR]: Failed to delete project groups for user %d for %s at %s: ", user.ID, method, path), err)
+			utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to delete project groups for user %d for %s at %s: ", user.ID, method, path), err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete project group"})
 			return
 		}
 		// Commit transaction
 		if err := tx.Commit().Error; err != nil {
-			utils.Log.Error(fmt.Sprintf("[ERROR]: Failed to commit transaction for user %d for %s at %s: ", user.ID, method, path), err)
+			utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to commit transaction for user %d for %s at %s: ", user.ID, method, path), err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit transaction"})
 			return
 		}
 	}
 
-	utils.Log.Info(fmt.Sprintf("[REQUEST-SUCCESS]: Deleted preferred projects for user %d for %s at %s", user.ID, method, path))
+	utils.GetLogger().Info(fmt.Sprintf("[REQUEST-SUCCESS]: Deleted preferred projects for user %d for %s at %s", user.ID, method, path))
 	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 }
 
@@ -498,7 +498,7 @@ func GetUserObject(h *UserHandler, cookie string) (models.AppUser, error) {
 	var user models.AppUser
 	if err := h.db.Where("cookie = ?", cookie).First(&user).Error; err != nil {
 		// Add entry if the user not exists
-		utils.Log.Info(fmt.Sprintf("[LOG]: User not exists for the cookie %s, creating new user", cookie))
+		utils.GetLogger().Info(fmt.Sprintf("[LOG]: User not exists for the cookie %s, creating new user", cookie))
 		var user = models.AppUser{
 			Cookie:   cookie,
 			Timezone: "America/Los_Angeles",

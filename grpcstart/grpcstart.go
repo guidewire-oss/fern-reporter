@@ -23,7 +23,7 @@ func main() {
 
 	// Use select to wait for either a signal or a timeout
 	<-sigs // Wait for a shutdown signal (CTRL+C)
-	utils.Log.Info("[gRPC-LOG]: Received shutdown signal, stopping gRPC server...")
+	utils.GetLogger().Info("[gRPC-LOG]: Received shutdown signal, stopping gRPC server...")
 	cancel() // Cancel the context to gracefully stop the server
 
 }

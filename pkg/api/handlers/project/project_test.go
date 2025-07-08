@@ -4,6 +4,11 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"time"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers/project"
@@ -13,10 +18,6 @@ import (
 	. "github.com/onsi/gomega"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"net/http"
-	"net/http/httptest"
-	"regexp"
-	"time"
 )
 
 var (
@@ -44,7 +45,7 @@ var _ = AfterEach(func() {
 	mock.ExpectClose()
 	err := db.Close()
 	if err != nil {
-		utils.Log.Error("[TEST-ERROR]: Unable to close the db connection: ", err)
+		utils.GetLogger().Error("[TEST-ERROR]: Unable to close the db connection: ", err)
 	}
 })
 
@@ -85,7 +86,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "project_details" WHERE name = $1 ORDER BY "project_details"."id" LIMIT $2`)).
@@ -126,7 +127,7 @@ var _ = Describe("Project Handlers", func() {
 		It("with duplicate project name, it should return error", func() {
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 			projectRows := sqlmock.NewRows([]string{"id", "uuid", "name", "team_name", "comment"}).
@@ -170,7 +171,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 
@@ -215,7 +216,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 
@@ -248,7 +249,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 
@@ -284,7 +285,7 @@ var _ = Describe("Project Handlers", func() {
 
 			reqBody, err := json.Marshal(projRequest)
 			if err != nil {
-				utils.Log.Error("[TEST-ERROR]: Error Marshaling project request: ", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error Marshaling project request: ", err)
 				return
 			}
 
