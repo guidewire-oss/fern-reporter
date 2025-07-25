@@ -83,33 +83,51 @@ func getProjectIDByUUID(db *gorm.DB, uuid string) (uint64, error) {
 	return project.ID, nil
 }
 
+// GetOrCreateTag checks if a tag exists by name, creates it if not, and returns the tag.
+func GetOrCreateTag(db *gorm.DB, tagName string) (models.Tag, error) {
+	var existingTag models.Tag
+	result := db.Where("name = ?", tagName).First(&existingTag)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		newTag := models.Tag{Name: tagName}
+		if err := db.Create(&newTag).Error; err != nil {
+			log.Printf("failed to create tag %s: %v", tagName, err)
+			return models.Tag{}, err
+		}
+		return newTag, nil
+	} else if result.Error != nil {
+		return models.Tag{}, result.Error
+	}
+	return existingTag, nil
+}
+
 func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {
-	for i, suite := range testRun.SuiteRuns {
-		for j, spec := range suite.SpecRuns {
-			var processedTags []models.Tag
-			for _, tag := range spec.Tags {
-				var existingTag models.Tag
-
-				// Check if the tag already exists
-				result := db.Where("name = ?", tag.Name).First(&existingTag)
-
-				if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-					// If the tag does not exist, create a new one
-					newTag := models.Tag{Name: tag.Name}
-					if err := db.Create(&newTag).Error; err != nil {
-						return err // Return error if tag creation fails
-					}
-					processedTags = append(processedTags, newTag)
-				} else if result.Error != nil {
-					// Return error if there is a problem fetching the tag
-					return result.Error
-				} else {
-					// If the tag exists, use the existing tag
-					processedTags = append(processedTags, existingTag)
-				}
+	processTagList := func(tags []models.Tag) ([]models.Tag, error) {
+		result := make([]models.Tag, 0, len(tags))
+		for _, t := range tags {
+			tag, err := GetOrCreateTag(db, t.Name)
+			if err != nil {
+				return nil, err
 			}
-			// Correctly associate the processed tags with the specific spec run
-			testRun.SuiteRuns[i].SpecRuns[j].Tags = processedTags
+			result = append(result, tag)
+		}
+		return result, nil
+	}
+
+	for i, suite := range testRun.SuiteRuns {
+		// Process suite-level tags
+		suiteTags, err := processTagList(suite.Tags)
+		if err != nil {
+			return err
+		}
+		testRun.SuiteRuns[i].Tags = suiteTags
+
+		// Process spec-level tags
+		for j, spec := range suite.SpecRuns {
+			specTags, err := processTagList(spec.Tags)
+			if err != nil {
+				return err
+			}
+			testRun.SuiteRuns[i].SpecRuns[j].Tags = specTags
 		}
 	}
 	return nil

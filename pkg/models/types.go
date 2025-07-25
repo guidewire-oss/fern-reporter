@@ -33,6 +33,7 @@ type SuiteRun struct {
 	SuiteName string    `json:"suite_name"`
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
+	Tags      []Tag     `json:"tags" gorm:"many2many:suite_run_tags;"`
 	SpecRuns  []SpecRun `json:"spec_runs" gorm:"foreignKey:SuiteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
