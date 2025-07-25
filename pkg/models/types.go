@@ -33,6 +33,7 @@ type SuiteRun struct {
 	SuiteName string    `json:"suite_name"`
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
+	Tags      []Tag     `json:"tags" gorm:"many2many:suite_run_tags;"`
 	SpecRuns  []SpecRun `json:"spec_runs" gorm:"foreignKey:SuiteID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
@@ -66,8 +67,10 @@ type TestSummary struct {
 }
 
 type Tag struct {
-	ID   uint64 `json:"id" gorm:"primaryKey"`
-	Name string `json:"name"`
+	ID       uint64 `json:"id" gorm:"primaryKey"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
+	Value    string `json:"value"`
 }
 
 type ProjectDetails struct {

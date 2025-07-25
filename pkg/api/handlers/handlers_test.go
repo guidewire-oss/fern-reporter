@@ -24,6 +24,36 @@ import (
 	"github.com/guidewire/fern-reporter/pkg/models"
 )
 
+var _ = Describe("ParseTagName", func() {
+	It("parses category and value from tagName with colon", func() {
+		tag := handlers.ParseTagName("priority:high")
+		Expect(tag.Name).To(Equal("priority:high"))
+		Expect(tag.Category).To(Equal("priority"))
+		Expect(tag.Value).To(Equal("high"))
+	})
+
+	It("sets only name if no colon is present", func() {
+		tag := handlers.ParseTagName("smoke")
+		Expect(tag.Name).To(Equal("smoke"))
+		Expect(tag.Category).To(BeEmpty())
+		Expect(tag.Value).To(Equal("smoke"))
+	})
+
+	It("handles empty tagName", func() {
+		tag := handlers.ParseTagName("")
+		Expect(tag.Name).To(Equal(""))
+		Expect(tag.Category).To(BeEmpty())
+		Expect(tag.Value).To(BeEmpty())
+	})
+
+	It("handles multiple colons, splitting only on the first", func() {
+		tag := handlers.ParseTagName("env:prod:us")
+		Expect(tag.Name).To(Equal("env:prod:us"))
+		Expect(tag.Category).To(Equal("env"))
+		Expect(tag.Value).To(Equal("prod:us"))
+	})
+})
+
 type TestDataSetup struct {
 	DB *gorm.DB
 }
@@ -442,13 +472,13 @@ var _ = Describe("Handlers", func() {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "tags" WHERE name = $1 ORDER BY "tags"."id" LIMIT $2`)).WithArgs("TagName", 1).WillReturnRows(rows)
 
 			mock.ExpectBegin()
-			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "tags" ("name") VALUES ($1) RETURNING "id"`)).
-				WithArgs("TagName").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "tags" ("name","category","value") VALUES ($1,$2,$3) RETURNING "id"`)).
+				WithArgs("TagName", "", "TagName").WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 			mock.ExpectCommit()
 
 			mock.ExpectBegin()
-			mock.ExpectQuery(regexp.QuoteMeta(`UPDATE "test_runs" SET "test_project_name"=$1,"test_seed"=$2,"start_time"=$3,"end_time"=$4,"git_branch"=$5,"git_sha"=$6,"build_trigger_actor"=$7,"build_url"=$8 WHERE "id" = $5`)).
-				WithArgs(testRun.TestProjectName, testRun.TestSeed, testRun.StartTime, testRun.EndTime, testRun.ID, testRun.GitBranch, testRun.GitSha, testRun.BuildTriggerActor, testRun.BuildUrl).
+			mock.ExpectExec(regexp.QuoteMeta(`UPDATE "test_runs" SET "test_project_name"=$1,"project_id"=$2,"test_seed"=$3,"start_time"=$4,"end_time"=$5,"git_branch"=$6,"git_sha"=$7,"build_trigger_actor"=$8,"build_url"=$9 WHERE "id" = $10`)).
+				WithArgs(testRun.TestProjectName, expectedProject.ID, testRun.TestSeed, testRun.StartTime, testRun.EndTime, testRun.GitBranch, testRun.GitSha, testRun.BuildTriggerActor, testRun.BuildUrl, testRun.ID).
 				WillReturnError(errors.New("unable to save record"))
 			mock.ExpectRollback()
 
@@ -652,7 +682,7 @@ var _ = Describe("Handlers", func() {
 
 	Context("When ProcessTags is invoked and tag is not found", func() {
 		It("should create a new tag", func() {
-			tag := models.Tag{Name: "NewTag"}
+			tag := models.Tag{Name: "NewTag", Category: "", Value: "NewTag"}
 			specRun := models.SpecRun{Tags: []models.Tag{tag}}
 			suiteRun := models.SuiteRun{SpecRuns: []models.SpecRun{specRun}}
 			testRun := &models.TestRun{SuiteRuns: []models.SuiteRun{suiteRun}}
@@ -662,8 +692,8 @@ var _ = Describe("Handlers", func() {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "tags" WHERE name = $1 ORDER BY "tags"."id" LIMIT $2`)).WithArgs(tag.Name, 1).WillReturnRows(rows)
 			mock.ExpectBegin()
 
-			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "tags" ("name") VALUES ($1) RETURNING "id"`)).
-				WithArgs(tag.Name).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "tags" ("name","category","value") VALUES ($1,$2,$3) RETURNING "id"`)).
+				WithArgs(tag.Name, tag.Category, tag.Value).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 			mock.ExpectCommit()
 
 			err := handlers.ProcessTags(gormDb, testRun)
