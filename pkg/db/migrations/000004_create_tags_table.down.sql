@@ -1,3 +1,3 @@
 DROP TABLE IF EXISTS tags;
 
-DROP TABLE IF EXISTS specrun_tags;
+DROP TABLE IF EXISTS spec_run_tags;
