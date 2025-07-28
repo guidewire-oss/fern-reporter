@@ -86,9 +86,10 @@ func getProjectIDByUUID(db *gorm.DB, uuid string) (uint64, error) {
 // GetOrCreateTag checks if a tag exists by name, creates it if not, and returns the tag.
 func GetOrCreateTag(db *gorm.DB, tagName string) (models.Tag, error) {
 	var existingTag models.Tag
+
 	result := db.Where("name = ?", tagName).First(&existingTag)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		newTag := models.Tag{Name: tagName}
+		newTag := ParseTagName(tagName)
 		if err := db.Create(&newTag).Error; err != nil {
 			log.Printf("failed to create tag %s: %v", tagName, err)
 			return models.Tag{}, err
@@ -98,6 +99,21 @@ func GetOrCreateTag(db *gorm.DB, tagName string) (models.Tag, error) {
 		return models.Tag{}, result.Error
 	}
 	return existingTag, nil
+}
+
+// ParseTagName splits a tag string into Category, Value, and Name.
+// If there is no colon, we will put the whole input into Value, anticipating that at
+// some time in the future we will retire the Name column.
+// Example: "priority:high" -> Category: "priority", Value: "high", Name: "priority:high"
+func ParseTagName(tagName string) models.Tag {
+	tag := models.Tag{Name: tagName}
+	if idx := strings.Index(tagName, ":"); idx == -1 {
+		tag.Value = tagName
+	} else {
+		tag.Category = tagName[:idx]
+		tag.Value = tagName[idx+1:]
+	}
+	return tag
 }
 
 func ProcessTags(db *gorm.DB, testRun *models.TestRun) error {
