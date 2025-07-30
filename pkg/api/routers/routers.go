@@ -4,6 +4,7 @@ import (
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers/project"
+	"github.com/guidewire/fern-reporter/pkg/api/handlers/summary"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers/user"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
@@ -30,6 +31,7 @@ func RegisterRouters(router *gin.Engine) {
 	handler := handlers.NewHandler(db.GetDb())
 	userHandler := user.NewUserHandler(db.GetDb())
 	projectHandler := project.NewProjectHandler(db.GetDb())
+	summaryHandler := summary.NewSummaryHandler(db.GetDb())
 
 	authEnabled := config.GetAuth().Enabled
 
@@ -73,6 +75,9 @@ func RegisterRouters(router *gin.Engine) {
 		user.POST("/preferred", userHandler.SavePreferredProject)
 		user.GET("/preferred", userHandler.GetPreferredProject)
 		user.DELETE("/preferred", userHandler.DeletePreferredProject)
+
+		summary := api.Group("/summary")
+		summary.GET("/:projectUUID", summaryHandler.GetSummary)
 	}
 
 	var reports *gin.RouterGroup
