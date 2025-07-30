@@ -1,7 +1,10 @@
 package summary
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -48,6 +51,17 @@ func (h SummaryHandler) GetSummary(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "TestRun not found"})
 		return
 	}
+
+	//sort by spec run id
+	for i := range testRun.SuiteRuns {
+		sort.Slice(testRun.SuiteRuns[i].SpecRuns, func(a, b int) bool {
+			return testRun.SuiteRuns[i].SpecRuns[a].ID < testRun.SuiteRuns[i].SpecRuns[b].ID
+		})
+	}
+
+	// Sort and print
+	pretty, _ := json.MarshalIndent(testRun, "", "  ")
+	fmt.Printf("TestRun after sorting:\n%s\n", pretty)
 
 	// Aggregation
 	statusCounts := map[string]int{}

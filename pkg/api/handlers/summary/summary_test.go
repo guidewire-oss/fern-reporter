@@ -25,7 +25,10 @@ type testEnv struct {
 	project models.ProjectDetails
 }
 
-func setupTestEnvWithTaggedSpecs(specsWithTags map[string][]models.Tag) testEnv {
+func setupTestEnvWithTaggedSpecs(specsWithTags map[string]struct {
+	Status string
+	Tags   []models.Tag
+}) testEnv {
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	Expect(err).ToNot(HaveOccurred())
 
@@ -68,21 +71,21 @@ func setupTestEnvWithTaggedSpecs(specsWithTags map[string][]models.Tag) testEnv 
 	Expect(db.Create(&suiteRun).Error).ToNot(HaveOccurred())
 
 	specIndex := 0
-	for desc, tags := range specsWithTags {
+	for desc, data := range specsWithTags {
 		specRun := models.SpecRun{
 			SuiteID:         suiteRun.ID,
 			SpecDescription: desc,
-			Status:          "passed",
+			Status:          data.Status,
 			StartTime:       time.Now().Add(-time.Duration(90-specIndex*30) * time.Second),
 			EndTime:         time.Now().Add(-time.Duration(85-specIndex*30) * time.Second),
 		}
 		Expect(db.Create(&specRun).Error).ToNot(HaveOccurred())
 
-		for _, tag := range tags {
+		for _, tag := range data.Tags {
 			Expect(db.Create(&tag).Error).ToNot(HaveOccurred())
 		}
 
-		Expect(db.Model(&specRun).Association("Tags").Append(&tags)).To(Succeed())
+		Expect(db.Model(&specRun).Association("Tags").Append(&data.Tags)).To(Succeed())
 		specIndex++
 	}
 
@@ -104,18 +107,27 @@ var _ = Describe("GetSummary", func() {
 
 	It("returns test summary for a valid project and seed", func() {
 		// Create records for specs with tags
-		specsWithTags := map[string][]models.Tag{
+		specsWithTags := map[string]struct {
+			Status string
+			Tags   []models.Tag
+		}{
 			"spec-run-a": {
-				{Name: "test_type", Value: "acceptance"},
-				{Name: "component", Value: "jspolicy"},
-				{Name: "owner", Value: "danville"},
-				{Name: "category", Value: "infrastructure"},
+				Status: "passed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "jspolicy"},
+					{Name: "owner", Value: "capitola"},
+					{Name: "category", Value: "infrastructure"},
+				},
 			},
 			"spec-run-b": {
-				{Name: "test_type", Value: "acceptance"},
-				{Name: "component", Value: "jspolicy"},
-				{Name: "owner", Value: "danville"},
-				{Name: "category", Value: "infrastructure"},
+				Status: "passed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "jspolicy"},
+					{Name: "owner", Value: "capitola"},
+					{Name: "category", Value: "infrastructure"},
+				},
 			},
 		}
 
@@ -149,25 +161,33 @@ var _ = Describe("GetSummary", func() {
 		entry := summaryArr[0].(map[string]interface{})
 		Expect(entry["test_type"]).To(Equal("acceptance"))
 		Expect(entry["component"]).To(Equal("jspolicy"))
-		Expect(entry["owner"]).To(Equal("danville"))
+		Expect(entry["owner"]).To(Equal("capitola"))
 		Expect(entry["passed"]).To(BeNumerically("==", 2))
 		Expect(entry["category"]).To(Equal("infrastructure"))
 	})
 
 	It("returns test summary for multiple components", func() {
-		// Create records for specs with tags
-		specsWithTags := map[string][]models.Tag{
+		specsWithTags := map[string]struct {
+			Status string
+			Tags   []models.Tag
+		}{
 			"spec-run-a": {
-				{Name: "test_type", Value: "acceptance"},
-				{Name: "component", Value: "jspolicy"},
-				{Name: "owner", Value: "capitola"},
-				{Name: "category", Value: "infrastructure"},
+				Status: "passed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "jspolicy"},
+					{Name: "owner", Value: "capitola"},
+					{Name: "category", Value: "infrastructure"},
+				},
 			},
 			"spec-run-b": {
-				{Name: "test_type", Value: "acceptance"},
-				{Name: "component", Value: "keda"},
-				{Name: "owner", Value: "capitola"},
-				{Name: "category", Value: "infrastructure"},
+				Status: "passed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "keda"},
+					{Name: "owner", Value: "capitola"},
+					{Name: "category", Value: "infrastructure"},
+				},
 			},
 		}
 
@@ -212,4 +232,67 @@ var _ = Describe("GetSummary", func() {
 		Expect(entry["passed"]).To(BeNumerically("==", 1))
 		Expect(entry["category"]).To(Equal("infrastructure"))
 	})
+
+	It("returns test summary for failed status", func() {
+		specsWithTags := map[string]struct {
+			Status string
+			Tags   []models.Tag
+		}{
+			"spec-run-a": {
+				Status: "passed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "jspolicy"},
+					{Name: "owner", Value: "danville"},
+					{Name: "category", Value: "infrastructure"},
+				},
+			},
+			"spec-run-b": {
+				Status: "failed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "jspolicy"},
+					{Name: "owner", Value: "danville"},
+					{Name: "category", Value: "infrastructure"},
+				},
+			},
+		}
+
+		env := setupTestEnvWithTaggedSpecs(specsWithTags)
+
+		url := fmt.Sprintf("/api/summary/%s?seed=1693412583", env.project.UUID)
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		rec := httptest.NewRecorder()
+
+		env.router.ServeHTTP(rec, req)
+		Expect(rec.Code).To(Equal(http.StatusOK))
+
+		var parsed map[string]interface{}
+		err := json.Unmarshal(rec.Body.Bytes(), &parsed)
+		fmt.Printf("Raw response body: %s\n", rec.Body.Bytes())
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(parsed).To(HaveKey("head"))
+		Expect(parsed).To(HaveKey("summary"))
+
+		head := parsed["head"].(map[string]interface{})
+		pretty, _ := json.MarshalIndent(parsed, "", "  ")
+		fmt.Printf("Parsed response (pretty):\n%s\n", pretty)
+		Expect(head["branch"]).To(Equal("main"))
+		Expect(head["status"]).To(Equal("failed"))
+		Expect(int(head["tests"].(float64))).To(Equal(2))
+
+		summaryArr := parsed["summary"].([]interface{})
+		Expect(summaryArr).To(HaveLen(1))
+
+		entry := summaryArr[0].(map[string]interface{})
+		Expect(entry["test_type"]).To(Equal("acceptance"))
+		Expect(entry["component"]).To(Equal("jspolicy"))
+		Expect(entry["owner"]).To(Equal("danville"))
+		Expect(entry["passed"]).To(BeNumerically("==", 1))
+		Expect(entry["failed"]).To(BeNumerically("==", 1))
+		Expect(entry["category"]).To(Equal("infrastructure"))
+
+	})
+
 })
