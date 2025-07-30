@@ -2,16 +2,15 @@ package summary
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"sort"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"github.com/guidewire/fern-reporter/pkg/models"
+	"sort"
 )
 
 type SummaryHandler struct {
@@ -25,10 +24,15 @@ func NewSummaryHandler(db *gorm.DB) *SummaryHandler {
 func (h SummaryHandler) GetSummary(c *gin.Context) {
 	projectUUID := c.Param("projectUUID")
 
+	groupBy := c.QueryArray("group_by")
+	if len(groupBy) == 0 {
+		groupBy = []string{"test_type", "component", "owner", "category"} // default fallback
+	}
+
 	var testRun models.TestRun
 
 	query := h.db.
-		Model(&models.TestRun{}). // ← CRITICAL
+		Model(&models.TestRun{}).
 		Joins("Project").
 		Where("Project.uuid = ?", projectUUID).
 		Preload("Project").
@@ -37,12 +41,7 @@ func (h SummaryHandler) GetSummary(c *gin.Context) {
 
 	seedParam := c.Query("seed")
 	if seedParam != "" {
-		seed, err := strconv.ParseUint(seedParam, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid seed"})
-			return
-		}
-		query = query.Where("test_seed = ?", seed)
+		query = query.Where("test_seed = ?", seedParam)
 	} else {
 		query = query.Order("start_time desc")
 	}
@@ -52,76 +51,51 @@ func (h SummaryHandler) GetSummary(c *gin.Context) {
 		return
 	}
 
-	//sort by spec run id
-	for i := range testRun.SuiteRuns {
-		sort.Slice(testRun.SuiteRuns[i].SpecRuns, func(a, b int) bool {
-			return testRun.SuiteRuns[i].SpecRuns[a].ID < testRun.SuiteRuns[i].SpecRuns[b].ID
-		})
-	}
-
-	// Sort and print
-	pretty, _ := json.MarshalIndent(testRun, "", "  ")
-	fmt.Printf("TestRun after sorting:\n%s\n", pretty)
-
-	// Aggregation
-	statusCounts := map[string]int{}
-	groups := map[string]map[string]map[string]map[string]int{} // test_type → component → owner → category data
+	// Flexible aggregation
+	groupCounts := map[string]map[string]int{}
+	groupKeyMap := map[string]map[string]string{} // compositeKey -> map of grouping keys
 
 	totalTests := 0
+	statusCounts := map[string]int{}
 
 	for _, suite := range testRun.SuiteRuns {
 		for _, spec := range suite.SpecRuns {
 			totalTests++
 
-			var testType, component, owner, category string
+			// Build tag map for this spec
+			tagMap := map[string]string{}
 			for _, tag := range spec.Tags {
-				switch tag.Name {
-				case "test_type":
-					testType = tag.Value
-				case "component":
-					component = tag.Value
-				case "owner":
-					owner = tag.Value
-				case "category":
-					category = tag.Value
+				tagMap[tag.Name] = tag.Value
+			}
+
+			// Compose dynamic key
+			keyParts := []string{}
+			keyKV := map[string]string{}
+			for _, key := range groupBy {
+				value := tagMap[key]
+				if value == "" {
+					value = "unspecified"
 				}
+				keyParts = append(keyParts, value)
+				keyKV[key] = value
 			}
+			compositeKey := strings.Join(keyParts, "|")
 
-			if testType == "" {
-				testType = "unspecified"
-			}
-			if component == "" {
-				component = "unspecified"
-			}
-			if owner == "" {
-				owner = "unspecified"
-			}
-			if category == "" {
-				category = "unspecified"
-			}
-
-			if _, ok := groups[testType]; !ok {
-				groups[testType] = map[string]map[string]map[string]int{}
-			}
-			if _, ok := groups[testType][component]; !ok {
-				groups[testType][component] = map[string]map[string]int{}
-			}
-			if _, ok := groups[testType][component][owner]; !ok {
-				groups[testType][component][owner] = map[string]int{
+			if _, ok := groupCounts[compositeKey]; !ok {
+				groupCounts[compositeKey] = map[string]int{
 					"total":   0,
 					"passed":  0,
 					"failed":  0,
 					"skipped": 0,
 					"pending": 0,
 				}
+				groupKeyMap[compositeKey] = keyKV
 			}
 
 			status := spec.Status
 			statusCounts[status]++
-			groups[testType][component][owner]["total"]++
-			groups[testType][component][owner][status]++
-			// Save category as "virtual key"
-			groups[testType][component][owner]["__category__"] = intFromCategory(category)
+			groupCounts[compositeKey]["total"]++
+			groupCounts[compositeKey][status]++
 		}
 	}
 
@@ -130,36 +104,39 @@ func (h SummaryHandler) GetSummary(c *gin.Context) {
 		overallStatus = "failed"
 	}
 
-	// Construct summary section
-	var summary []map[string]interface{}
-	for testType, comps := range groups {
-		for component, owners := range comps {
-			for owner, stats := range owners {
-				category := categoryFromInt(stats["__category__"])
-				entry := map[string]interface{}{
-					"test_type": testType,
-					"component": component,
-					"owner":     owner,
-					"category":  category,
-					"total":     stats["total"],
-				}
-				// only include if > 0
-				if stats["passed"] > 0 {
-					entry["passed"] = stats["passed"]
-				}
-				if stats["failed"] > 0 {
-					entry["failed"] = stats["failed"]
-				}
-				if stats["skipped"] > 0 {
-					entry["skipped"] = stats["skipped"]
-				}
-				if stats["pending"] > 0 {
-					entry["pending"] = stats["pending"]
-				}
-				summary = append(summary, entry)
+	// Build summary response
+	summary := []map[string]interface{}{}
+	for key, counts := range groupCounts {
+		entry := map[string]interface{}{}
+		for _, tag := range groupBy {
+			entry[tag] = groupKeyMap[key][tag]
+		}
+		for k, v := range counts {
+			if v > 0 {
+				entry[k] = v
 			}
 		}
+		summary = append(summary, entry)
 	}
+
+	// Sorts the summary by the groupBy keys to ensure consistent output order.
+	sort.Slice(summary, func(i, j int) bool {
+		a, b := summary[i], summary[j]
+		for _, key := range groupBy {
+			va, oka := a[key].(string)
+			vb, okb := b[key].(string)
+			if !oka || !okb {
+				continue
+			}
+			if va != vb {
+				return va < vb
+			}
+		}
+		// as a final tie‐breaker, sort by JSON encoding
+		sa, _ := json.Marshal(a)
+		sb, _ := json.Marshal(b)
+		return string(sa) < string(sb)
+	})
 
 	response := map[string]interface{}{
 		"head": map[string]interface{}{
@@ -176,28 +153,4 @@ func (h SummaryHandler) GetSummary(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
-}
-
-// Converts category string to int for map use
-func intFromCategory(category string) int {
-	// Optional: use a real map for category values
-	switch category {
-	case "infrastructure":
-		return 1
-	case "atmos-ng":
-		return 2
-	default:
-		return 0
-	}
-}
-
-func categoryFromInt(i int) string {
-	switch i {
-	case 1:
-		return "infrastructure"
-	case 2:
-		return "atmos-ng"
-	default:
-		return "unspecified"
-	}
 }

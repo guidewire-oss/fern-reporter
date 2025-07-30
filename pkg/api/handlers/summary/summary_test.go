@@ -292,7 +292,207 @@ var _ = Describe("GetSummary", func() {
 		Expect(entry["passed"]).To(BeNumerically("==", 1))
 		Expect(entry["failed"]).To(BeNumerically("==", 1))
 		Expect(entry["category"]).To(Equal("infrastructure"))
-
 	})
 
+	It("returns test summary appropriately when grouping by something other than the default tags - eg just test type", func() {
+		specsWithTags := map[string]struct {
+			Status string
+			Tags   []models.Tag
+		}{
+			"spec-run-a": {
+				Status: "passed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "metrics-server"},
+					{Name: "owner", Value: "capitola"},
+					{Name: "category", Value: "helm"},
+				},
+			},
+			"spec-run-b": {
+				Status: "failed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "jspolicy"},
+					{Name: "owner", Value: "danville"},
+					{Name: "category", Value: "infrastructure"},
+				},
+			},
+		}
+
+		env := setupTestEnvWithTaggedSpecs(specsWithTags)
+
+		url := fmt.Sprintf("/api/summary/%s?seed=1693412583&group_by=test_type", env.project.UUID)
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		rec := httptest.NewRecorder()
+
+		env.router.ServeHTTP(rec, req)
+		Expect(rec.Code).To(Equal(http.StatusOK))
+
+		var parsed map[string]interface{}
+		err := json.Unmarshal(rec.Body.Bytes(), &parsed)
+		fmt.Printf("Raw response body: %s\n", rec.Body.Bytes())
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(parsed).To(HaveKey("head"))
+		Expect(parsed).To(HaveKey("summary"))
+
+		head := parsed["head"].(map[string]interface{})
+		pretty, _ := json.MarshalIndent(parsed, "", "  ")
+		fmt.Printf("Parsed response (pretty):\n%s\n", pretty)
+		Expect(head["branch"]).To(Equal("main"))
+		Expect(head["status"]).To(Equal("failed"))
+		Expect(int(head["tests"].(float64))).To(Equal(2))
+
+		summaryArr := parsed["summary"].([]interface{})
+		Expect(summaryArr).To(HaveLen(1))
+
+		entry := summaryArr[0].(map[string]interface{})
+		Expect(entry["test_type"]).To(Equal("acceptance"))
+		Expect(entry["passed"]).To(BeNumerically("==", 1))
+		Expect(entry["failed"]).To(BeNumerically("==", 1))
+	})
+
+	It("returns test summary appropriately when grouping by two tags, test type and component", func() {
+		specsWithTags := map[string]struct {
+			Status string
+			Tags   []models.Tag
+		}{
+			"spec-run-a": {
+				Status: "passed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "metrics-server"},
+					{Name: "owner", Value: "capitola"},
+					{Name: "category", Value: "helm"},
+				},
+			},
+			"spec-run-b": {
+				Status: "failed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "jspolicy"},
+					{Name: "owner", Value: "danville1"},
+					{Name: "category", Value: "infrastructure"},
+				},
+			},
+			"spec-run-c": {
+				Status: "skipped",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "jspolicy"},
+					{Name: "owner", Value: "danville2"},
+					{Name: "category", Value: "infrastructure"},
+				},
+			},
+			"spec-run-d": {
+				Status: "pending",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "keda"},
+					{Name: "owner", Value: "danville3"},
+					{Name: "category", Value: "infrastructure"},
+				},
+			},
+		}
+
+		env := setupTestEnvWithTaggedSpecs(specsWithTags)
+
+		url := fmt.Sprintf("/api/summary/%s?seed=1693412583&group_by=test_type&group_by=component", env.project.UUID)
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		rec := httptest.NewRecorder()
+
+		env.router.ServeHTTP(rec, req)
+		Expect(rec.Code).To(Equal(http.StatusOK))
+
+		var parsed map[string]interface{}
+		err := json.Unmarshal(rec.Body.Bytes(), &parsed)
+		fmt.Printf("Raw response body: %s\n", rec.Body.Bytes())
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(parsed).To(HaveKey("head"))
+		Expect(parsed).To(HaveKey("summary"))
+
+		head := parsed["head"].(map[string]interface{})
+		pretty, _ := json.MarshalIndent(parsed, "", "  ")
+		fmt.Printf("Parsed response (pretty):\n%s\n", pretty)
+		Expect(head["branch"]).To(Equal("main"))
+		Expect(head["status"]).To(Equal("failed"))
+		Expect(int(head["tests"].(float64))).To(Equal(4))
+
+		summaryArr := parsed["summary"].([]interface{})
+		Expect(summaryArr).To(HaveLen(3))
+
+		entry := summaryArr[0].(map[string]interface{})
+		Expect(entry["test_type"]).To(Equal("acceptance"))
+		Expect(entry["component"]).To(Equal("jspolicy"))
+		Expect(entry["failed"]).To(BeNumerically("==", 1))
+		Expect(entry["skipped"]).To(BeNumerically("==", 1))
+
+		entry = summaryArr[1].(map[string]interface{})
+		Expect(entry["test_type"]).To(Equal("acceptance"))
+		Expect(entry["component"]).To(Equal("keda"))
+		Expect(entry["pending"]).To(BeNumerically("==", 1))
+
+		entry = summaryArr[2].(map[string]interface{})
+		Expect(entry["test_type"]).To(Equal("acceptance"))
+		Expect(entry["component"]).To(Equal("metrics-server"))
+		Expect(entry["passed"]).To(BeNumerically("==", 1))
+	})
+
+	It("behaves logically when you ask it to group by a non-existent tag", func() {
+		specsWithTags := map[string]struct {
+			Status string
+			Tags   []models.Tag
+		}{
+			"spec-run-a": {
+				Status: "passed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "metrics-server"},
+					{Name: "owner", Value: "capitola"},
+					{Name: "category", Value: "helm"},
+				},
+			},
+			"spec-run-b": {
+				Status: "failed",
+				Tags: []models.Tag{
+					{Name: "test_type", Value: "acceptance"},
+					{Name: "component", Value: "jspolicy"},
+					{Name: "owner", Value: "danville"},
+					{Name: "category", Value: "infrastructure"},
+				},
+			},
+		}
+
+		env := setupTestEnvWithTaggedSpecs(specsWithTags)
+
+		url := fmt.Sprintf("/api/summary/%s?seed=1693412583&group_by=banana", env.project.UUID)
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		rec := httptest.NewRecorder()
+
+		env.router.ServeHTTP(rec, req)
+		Expect(rec.Code).To(Equal(http.StatusOK))
+
+		var parsed map[string]interface{}
+		err := json.Unmarshal(rec.Body.Bytes(), &parsed)
+		fmt.Printf("Raw response body: %s\n", rec.Body.Bytes())
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(parsed).To(HaveKey("head"))
+		Expect(parsed).To(HaveKey("summary"))
+
+		head := parsed["head"].(map[string]interface{})
+		pretty, _ := json.MarshalIndent(parsed, "", "  ")
+		fmt.Printf("Parsed response (pretty):\n%s\n", pretty)
+		Expect(head["branch"]).To(Equal("main"))
+		Expect(head["status"]).To(Equal("failed"))
+		Expect(int(head["tests"].(float64))).To(Equal(2))
+
+		summaryArr := parsed["summary"].([]interface{})
+		Expect(summaryArr).To(HaveLen(1))
+
+		entry := summaryArr[0].(map[string]interface{})
+		Expect(entry["passed"]).To(BeNumerically("==", 1))
+		Expect(entry["failed"]).To(BeNumerically("==", 1))
+	})
 })
