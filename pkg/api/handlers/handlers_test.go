@@ -22,6 +22,7 @@ import (
 
 	"github.com/guidewire/fern-reporter/pkg/api/handlers"
 	"github.com/guidewire/fern-reporter/pkg/models"
+	"github.com/guidewire/fern-reporter/pkg/utils"
 )
 
 var _ = Describe("ParseTagName", func() {
@@ -80,7 +81,7 @@ var _ = Describe("Handlers", func() {
 	var _ = AfterEach(func() {
 		err := db.Close()
 		if err != nil {
-			fmt.Printf("Unable to close the db connection %s", err.Error())
+			utils.GetLogger().Error("[TEST-ERROR]: Unable to close the db connection: ", err)
 		}
 	})
 
@@ -184,7 +185,7 @@ var _ = Describe("Handlers", func() {
 
 			_, err := json.Marshal(expectedTestRun.SuiteRuns)
 			if err != nil {
-				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error serializing SuiteRuns: ", err)
 				return
 			}
 
@@ -208,7 +209,7 @@ var _ = Describe("Handlers", func() {
 			jsonStr := fmt.Sprintf(`{"id": 0, "test_project_name":"TestProject", "test_project_id":"996ad860-2a9a-504f-8861-aeafd0b2ae29", "git_branch": "%s", "git_sha": "%s", "build_trigger_actor": "%s", "build_url": "%s"}`, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl)
 			req, err := http.NewRequest("POST", "/", bytes.NewBuffer([]byte(jsonStr)))
 			if err != nil {
-				fmt.Printf("%v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error creating new HTTP Post request: ", err)
 			}
 
 			// Set the Content-Type header to application/json
@@ -244,7 +245,7 @@ var _ = Describe("Handlers", func() {
 			jsonStr := []byte(`"BAD_PAYLOAD_KEY" "BAD_VALUE"`)
 			req, err := http.NewRequest("POST", "/", bytes.NewBuffer(jsonStr))
 			if err != nil {
-				fmt.Printf("%v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error creating new HTTP Post request: ", err)
 			}
 
 			// Set the Content-Type header to application/json
@@ -293,7 +294,7 @@ var _ = Describe("Handlers", func() {
 
 			_, err := json.Marshal(expectedTestRun.SuiteRuns)
 			if err != nil {
-				fmt.Printf("Error serializing SuiteRuns: %v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error serializing SuiteRuns: ", err)
 				return
 			}
 
@@ -315,7 +316,7 @@ var _ = Describe("Handlers", func() {
 			jsonStr := fmt.Sprintf(`{"id": 1, "test_project_name":"TestProject", "test_project_id":"996ad860-2a9a-504f-8861-aeafd0b2ae29", "git_branch": "%s", "git_sha": "%s", "build_trigger_actor": "%s", "build_url": "%s"}`, expectedTestRun.GitBranch, expectedTestRun.GitSha, expectedTestRun.BuildTriggerActor, expectedTestRun.BuildUrl)
 			req, err := http.NewRequest("POST", "/", bytes.NewBuffer([]byte(jsonStr)))
 			if err != nil {
-				fmt.Printf("%v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error creating new HTTP Post request: ", err)
 			}
 
 			req.Header.Set("Content-Type", "application/json")
@@ -393,13 +394,13 @@ var _ = Describe("Handlers", func() {
 			testRunJson, err := json.Marshal(testRun)
 			if err != nil {
 				// Handle error
-				fmt.Println("Error:", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error Marshaling testRun: ", err)
 				return
 			}
 
 			req, err := http.NewRequest("POST", "/", bytes.NewBuffer(testRunJson))
 			if err != nil {
-				fmt.Printf("%v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error creating new HTTP Post request: ", err)
 			}
 
 			req.Header.Set("Content-Type", "application/json")
@@ -488,13 +489,13 @@ var _ = Describe("Handlers", func() {
 			testRunJson, err := json.Marshal(testRun)
 			if err != nil {
 				// Handle error
-				fmt.Println("Error:", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error Marshaling testRun: ", err)
 				return
 			}
 
 			req, err := http.NewRequest("POST", "/", bytes.NewBuffer(testRunJson))
 			if err != nil {
-				fmt.Printf("%v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error creating new HTTP Post request: ", err)
 			}
 
 			req.Header.Set("Content-Type", "application/json")
@@ -839,7 +840,7 @@ var _ = Describe("Handlers", func() {
 			jsonStr := []byte(`{"id": 1, "test_project_name":"Updated Project"}`)
 			req, err := http.NewRequest("PUT", "/endpoint", bytes.NewBuffer(jsonStr))
 			if err != nil {
-				fmt.Printf("%v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error creating new HTTP Put request: ", err)
 			}
 
 			req.Header.Set("Content-Type", "application/json")
@@ -873,7 +874,7 @@ var _ = Describe("Handlers", func() {
 
 			req, err := http.NewRequest("POST", "/endpoint", bytes.NewBuffer(jsonStr))
 			if err != nil {
-				fmt.Printf("%v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error creating new HTTP Post request: ", err)
 			}
 
 			req.Header.Set("Content-Type", "application/json")
@@ -939,7 +940,7 @@ var _ = Describe("Handlers", func() {
 
 			req, err := http.NewRequest("POST", "/endpoint", bytes.NewBuffer(jsonStr))
 			if err != nil {
-				fmt.Printf("%v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error creating new HTTP Post request: ", err)
 			}
 
 			req.Header.Set("Content-Type", "application/json")
@@ -1035,7 +1036,7 @@ var _ = Describe("Handlers", func() {
 			body, err := io.ReadAll(result.Body)
 			if err != nil {
 				// Handle the error
-				fmt.Printf("Error reading response body: %v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error reading response body: ", err)
 				return
 			}
 
@@ -1043,7 +1044,7 @@ var _ = Describe("Handlers", func() {
 			var response map[string]interface{}
 			if err := json.Unmarshal(body, &response); err != nil {
 				// Handle the error
-				fmt.Printf("Error parsing JSON response: %v", err)
+				utils.GetLogger().Error("[TEST-ERROR]: Error parsing JSON response: ", err)
 				return
 			}
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/guidewire/fern-reporter/grpcfiles/reporttestrunbyid"
 	"github.com/guidewire/fern-reporter/grpcfiles/updatetestrun"
 	"github.com/guidewire/fern-reporter/pkg/models"
+	"github.com/guidewire/fern-reporter/pkg/utils"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -80,13 +80,13 @@ type testRunServiceServer struct {
 }
 
 func (s *grpcServer) SendReport(ctx context.Context, req *pb.ReportRequest) (*pb.ReportResponse, error) {
-	log.Printf("Received gRPC report: %s", req.Message)
+	utils.GetLogger().Info(fmt.Sprintf("[gRPC-LOG]: Received gRPC report: %s", req.Message))
 	return &pb.ReportResponse{Status: "Report received successfully"}, nil
 }
 
 // Correct method signature (use types from the generated pb package)
 func (s *server) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
-	log.Printf("Received message: %s", req.GetMessage())
+	utils.GetLogger().Info(fmt.Sprintf("[gRPC-LOG]: Received message: %s", req.GetMessage()))
 	return &pb.PingResponse{Message: "Pong"}, nil
 }
 
@@ -94,9 +94,16 @@ func (s *server) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingRespons
 func (s *TestRunServiceServerid) ReportTestRunById(ctx context.Context, req *reporttestrunbyid.ReportTestRunByIdRequest) (*reporttestrunbyid.ReportTestRunByIdResponse, error) {
 	var testRun models.TestRun
 
+	method, ok := grpc.Method(ctx)
+	if !ok {
+		utils.GetLogger().Error("[ERROR]: Method not found in context", nil)
+		return nil, fmt.Errorf("method not found in context")
+	}
+
 	// Parse ID
 	testRunID, err := strconv.Atoi(req.Id)
 	if err != nil {
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid ID format at %s", method))
 		return nil, fmt.Errorf("invalid ID format")
 	}
 
@@ -163,9 +170,16 @@ func (s *TestRunServiceServer) ReportTestRunAll(ctx context.Context, req *report
 func (s *TestRunServiceServer) DeleteTestRun(ctx context.Context, req *deletetestrun.DeleteTestRunRequest) (*deletetestrun.DeleteTestRunResponse, error) {
 	var testRun models.TestRun
 
+	method, ok := grpc.Method(ctx)
+	if !ok {
+		utils.GetLogger().Error("[ERROR]: Method not found in context", nil)
+		return nil, fmt.Errorf("method not found in context")
+	}
+
 	// Parse ID
 	testRunID, err := strconv.Atoi(req.Id)
 	if err != nil {
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Invalid ID format at %s", method))
 		return &deletetestrun.DeleteTestRunResponse{
 			Success: false,
 			Message: "Invalid ID format",
@@ -178,12 +192,14 @@ func (s *TestRunServiceServer) DeleteTestRun(ctx context.Context, req *deletetes
 	result := s.db.Delete(&testRun)
 	if result.Error != nil {
 		// Database error
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to delete TestRun at %s", method), result.Error)
 		return &deletetestrun.DeleteTestRunResponse{
 			Success: false,
 			Message: "Error deleting test run",
 		}, nil
 	} else if result.RowsAffected == 0 {
 		// No rows affected (test run not found)
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: Test run %d not found at %s", testRunID, method))
 		return &deletetestrun.DeleteTestRunResponse{
 			Success: false,
 			Message: "Test run not found",
@@ -191,6 +207,7 @@ func (s *TestRunServiceServer) DeleteTestRun(ctx context.Context, req *deletetes
 	}
 
 	// Success response
+	utils.GetLogger().Info(fmt.Sprintf("[gRPC-LOG]: Test run %d deleted successfully at %s", testRunID, method))
 	return &deletetestrun.DeleteTestRunResponse{
 		Success: true,
 		Message: "Test run deleted successfully",
@@ -200,8 +217,16 @@ func (s *TestRunServiceServer) DeleteTestRun(ctx context.Context, req *deletetes
 func (s *Server) UpdateTestRun(ctx context.Context, req *updatetestrun.UpdateTestRunRequest) (*updatetestrun.TestRunResponse, error) {
 	var testRun models.TestRun
 
+	method, ok := grpc.Method(ctx)
+	if !ok {
+		utils.GetLogger().Error("[ERROR]: Method not found in context", nil)
+		return nil, fmt.Errorf("method not found in context")
+	}
+
 	// Find the TestRun by ID
 	if err := s.db.Where("id = ?", req.GetId()).First(&testRun).Error; err != nil {
+
+		utils.GetLogger().Warn(fmt.Sprintf("[REQUEST-ERROR]: TestRun %s not found at %s", req.GetId(), method))
 		return &updatetestrun.TestRunResponse{
 			Success: false,
 			Message: "TestRun not found",
@@ -213,12 +238,14 @@ func (s *Server) UpdateTestRun(ctx context.Context, req *updatetestrun.UpdateTes
 
 	// Save the updated TestRun in the database
 	if err := s.db.Save(&testRun).Error; err != nil {
+		utils.GetLogger().Error(fmt.Sprintf("[ERROR]: Failed to update TestRun %d at %s", testRun.ID, method), err)
 		return &updatetestrun.TestRunResponse{
 			Success: false,
 			Message: "Failed to update TestRun",
 		}, fmt.Errorf("failed to update TestRun: %v", err)
 	}
 
+	utils.GetLogger().Info(fmt.Sprintf("[gRPC-LOG]: TestRun %d updated successfully at %s", testRun.ID, method))
 	// Return success response with updated TestRun
 	return &updatetestrun.TestRunResponse{
 		Success: true,
@@ -350,7 +377,7 @@ func (s *testRunServiceServer) CreateTestRun(ctx context.Context, req *createtes
 
 	// Save or update the TestRun record
 	testRunModel := models.TestRun{
-		ID:   uint64(testRun.GetId()),
+		ID:              uint64(testRun.GetId()),
 		TestProjectName: testRun.GetName(),
 		// Map other fields as needed
 	}
@@ -371,7 +398,7 @@ func StartGRPCServer(context context.Context) {
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 
 	if err != nil {
-		log.Fatalf("Failed to listen on port 50051: %v", err)
+		utils.GetLogger().Fatal("[gRPC-ERROR]: Failed to listen on port 50051: ", err)
 	}
 
 	s := grpc.NewServer()
@@ -380,7 +407,7 @@ func StartGRPCServer(context context.Context) {
 	// testid starts here
 	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		utils.GetLogger().Fatal("[gRPC-ERROR]: Failed to connect to database: ", err)
 	}
 	pb.RegisterPingServiceServer(s, &server{}) // Register server
 
@@ -395,7 +422,7 @@ func StartGRPCServer(context context.Context) {
 	//gettestrunall and gettetsrunbyid
 	gtid.RegisterTestRunServiceServer(s, &servertestbyid{db: db})
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		utils.GetLogger().Fatal("[gRPC-ERROR]: Failed to serve gRPC: ", err)
 	}
 
 	testService := &TestServiceServer{db: db}
@@ -413,9 +440,9 @@ func StartGRPCServer(context context.Context) {
 
 	// Run the gRPC server in a goroutine
 	go func() {
-		log.Println("gRPC server is running on port 50051")
+		utils.GetLogger().Info("[gRPC-LOG]: gRPC server is starting on port 50051")
 		if err := s.Serve(lis); err != nil {
-			log.Fatalf("Failed to serve gRPC: %v", err)
+			utils.GetLogger().Fatal("[gRPC-ERROR]: Failed to serve gRPC: ", err)
 		}
 	}()
 
