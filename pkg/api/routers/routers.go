@@ -4,6 +4,7 @@ import (
 	"github.com/guidewire/fern-reporter/config"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers/project"
+	"github.com/guidewire/fern-reporter/pkg/api/handlers/summary"
 	"github.com/guidewire/fern-reporter/pkg/api/handlers/user"
 	"github.com/guidewire/fern-reporter/pkg/auth"
 	"github.com/guidewire/fern-reporter/pkg/db"
@@ -30,6 +31,7 @@ func RegisterRouters(router *gin.Engine) {
 	handler := handlers.NewHandler(db.GetDb())
 	userHandler := user.NewUserHandler(db.GetDb())
 	projectHandler := project.NewProjectHandler(db.GetDb())
+	summaryHandler := summary.NewSummaryHandler(db.GetDb())
 
 	authEnabled := config.GetAuth().Enabled
 
@@ -52,6 +54,7 @@ func RegisterRouters(router *gin.Engine) {
 		testReport := api.Group("/reports")
 		testReport.GET("/projects/", projectHandler.GetAllProjectsForReport)
 		testReport.GET("/summary/:projectId/", handler.GetTestSummary)
+		testReport.GET("/summary/project/:projectId/seed/:seed", summaryHandler.GetSummary) // ProjectId is the UUID in this case
 		testReport.GET("/testruns/", handler.ReportTestRunAll)
 		testReport.GET("/testruns", handler.ReportTestRunAll)
 		testReport.GET("/testruns/:id/", handler.ReportTestRunById)
@@ -73,6 +76,7 @@ func RegisterRouters(router *gin.Engine) {
 		user.POST("/preferred", userHandler.SavePreferredProject)
 		user.GET("/preferred", userHandler.GetPreferredProject)
 		user.DELETE("/preferred", userHandler.DeletePreferredProject)
+
 	}
 
 	var reports *gin.RouterGroup
